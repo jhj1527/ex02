@@ -1,0 +1,129 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE mapper PUBLIC "-//mybatis.org//DTD Mapper 3.0//EN" "http://mybatis.org/dtd/mybatis-3-mapper.dtd">
+
+<mapper namespace="com.example.ex02.mapper.BoardMapper">
+	
+	<resultMap id="boardMap" type="map">
+		<id property="bno" column="bno"/>
+		<result property="title" column="title"/>
+		<result property="content" column="content"/>
+		<result property="id" column="id"/>
+		<result property="regDate" column="regDate"/>
+		<result property="updateDate" column="updateDate" javaType="java.time.LocalDate"/>
+		<result property="viewCount" column="viewCount"/>
+		<result property="replyCount" column="replyCount"/>
+	</resultMap>
+	
+	<select id="getList" resultMap="boardMap" >
+	    <![CDATA[
+            select bno, title, content, id, regDate, updateDate, viewCount, replyCount
+			from (
+				select 
+					rownum rn, bno, title, content, id, regDate, updateDate, viewCount, replyCount
+					from board
+					where 1 = 1
+					and bno > 0
+					
+        ]]>
+        
+        <include refid="search"></include>
+        
+        <![CDATA[
+            and rownum <= #{pageNum} * #{amount}
+					order by bno desc
+				)
+			where 1 = 1
+			and rn > (#{pageNum} - 1) * #{amount}
+        ]]>
+    </select>
+	
+    <select id="get" resultType="com.example.ex02.dto.BoardDto" >
+	    <![CDATA[
+            select *
+            from board
+            where bno = #{bno}
+        ]]>
+    </select>
+	
+	<insert id="insert">
+		<selectKey keyProperty="bno" order="BEFORE" resultType="Long">
+			select nvl(max(bno), 0) + 1 from board
+		</selectKey>
+	
+		<![CDATA[
+			insert into board(bno, title, content, id, regDate) 
+			values(#{bno}, #{title, jdbcType = VARCHAR}, #{content, jdbcType = VARCHAR}, #{id}, sysdate)
+        ]]>
+	</insert>
+	
+    <update id="update">
+		<![CDATA[
+            update board set
+        ]]>
+		
+		<if test='title != null and !title.equals("")'>
+			<![CDATA[
+				title = #{title, jdbcType = VARCHAR},
+			]]>
+		</if>
+		
+		<![CDATA[
+			content = #{content, jdbcType = VARCHAR},
+            id = #{id},
+			updateDate = sysdate
+			where 1 = 1
+			and bno = #{bno}
+        ]]>
+    </update>
+
+    <delete id="delete">
+        <![CDATA[
+            delete from board
+            where 1 = 1
+            and bno = #{bno}
+        ]]>
+    </delete>
+    
+    <select id="getTotalCount" resultType="int" >
+	    <![CDATA[
+            select count(*)
+            from board
+            where 1 = 1 
+            and bno > 0
+        ]]>
+		<include refid="search"></include> 
+    </select>
+   
+    <update id="viewCountupdate">
+		<![CDATA[
+			update board set
+			viewCount = viewCount + 1
+			where 1 = 1
+			and bno = #{bno}
+		]]>
+    </update>
+    
+    <update id="replyCountupdate">
+		<![CDATA[
+			update board set
+			replyCount = replyCount + #{count}
+			where 1 = 1
+			and bno = #{bno}
+		]]>
+    </update>
+    
+    <sql id="search">
+    	<choose>
+    		<when test='(type == null or type.equals(""))'>
+    			
+    		</when>
+    		<when test="type == 'tc' or type.equals('tc')">
+    			and title like '%'||#{keyword}||'%' or content like '%'||#{keyword}||'%'
+    		</when>
+    		<when test='(type != null or !type.equals("")) and (keyword != null or !keyword.equals(""))'>
+    			and ${type} like '%'||#{keyword}||'%'
+    		</when>
+    	</choose>
+    </sql>
+ 
+</mapper>

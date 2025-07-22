@@ -1,0 +1,138 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE mapper PUBLIC "-//mybatis.org//DTD Mapper 3.0//EN" "http://mybatis.org/dtd/mybatis-3-mapper.dtd">
+
+<mapper namespace="com.example.ex02.mapper.OrderMapper">
+    <resultMap id="orderMap" type="com.example.ex02.dto.OrderDto">
+		<id property="orderId" column="orderId"/>
+		<result property="id" column="id"/>
+		<result property="imp_uid" column="imp_uid"/>
+		<result property="postCode" column="postCode"/>
+		<result property="address1" column="address1"/>
+		<result property="address2" column="address2"/>
+		<result property="address3" column="address3"/>
+		<result property="orderPrice" column="orderPrice"/>
+		<result property="charge" column="charge"/>
+		<result property="state" column="state"/>
+		<result property="phone" column="phone"/>
+		<result property="email" column="email"/>
+		<result property="regDate" column="regDate"/>
+	</resultMap>
+    
+    <resultMap id="orderDetailMap" type="com.example.ex02.dto.OrderDto" extends="orderMap">
+		<collection property="list" column="list" ofType="com.example.ex02.dto.OrderDto$OrderItemDto" notNullColumn="oino" >
+			<id property="oino" column="oino" />
+			<result property="orderId" column="orderId" />
+			<result property="ino" column="ino" />
+			<result property="id" column="id" />
+			<result property="name" column="name" />
+			<result property="amount" column="amount" />
+			<result property="price" column="price" />
+			<result property="discount" column="discount" />
+			<!-- property : dto 클래스 컬럼명과 동일 -->
+			<association property="attachDto" column="dto" javaType="com.example.ex02.dto.AttachDto" 
+			resultMap="attachResultMap" notNullColumn="fileName" />
+		</collection>
+	</resultMap>
+	
+	<resultMap id="attachResultMap" type="com.example.ex02.dto.AttachDto">
+		<!-- <result property="attachId" column="attachId" /> -->
+		<result property="ino" column="ino" />
+		<result property="fileName" column="filename" />
+		<result property="filePath" column="filepath" />
+	</resultMap>
+	
+	<select id="getList" resultMap="orderMap">
+		<![CDATA[
+	    	select *
+			from orderitem 
+			where 1 = 1
+			and id = #{id}
+			order by regDate
+		]]>
+	</select>
+    
+    <select id="getDetailList" resultMap="orderDetailMap">
+    	<![CDATA[
+	    	select *  
+			from orderitem o
+			left outer join orderdetail d
+				on o.orderid = d.orderid
+			left outer join (
+			  	select ino, max(filename) as filename, filepath 
+			  	from attach
+				group by ino, filepath
+			 	) a
+				on d.ino = a.ino
+			left outer join item i
+				on i.ino = d.ino
+			where 1 = 1
+			and o.orderId = #{orderId}
+			order by o.regDate, d.oino DESC
+		]]>
+    </select>
+    
+    <select id="get" resultMap="orderMap">
+		<![CDATA[
+	    	select *
+			from orderitem 
+			where 1 = 1
+			and orderId = #{orderId}
+		]]>
+	</select>
+    
+    <insert id="insert">
+    	<![CDATA[
+			insert into orderitem(orderId, id, postCode, address1, address2, address3, orderPrice, charge, imp_uid, phone, email)
+			values(#{orderId, jdbcType = VARCHAR}, #{id}, #{postCode}, #{address1}, #{address2}, #{address3},
+			#{orderPrice}, #{charge}, #{imp_uid}, #{phone}, #{email})
+        ]]>
+    </insert>
+    
+    <insert id="orderItemInsert">
+		<selectKey keyProperty="oino" order="BEFORE" resultType="Long">
+			select nvl(max(oino), 0) + 1 from orderdetail
+		</selectKey>
+		
+		<![CDATA[
+			INSERT ALL
+        ]]>
+		
+		<!-- selectkey는 한번만 호출 됨으로 foreach 안에 인덱스 값을 더해줘 채번 처리한다. -->
+        <foreach collection="list" item="item" index="index" open="" separator=" " close="SELECT * FROM DUAL">
+			into orderdetail(oino, orderId, ino, id, price, amount) values
+			(#{oino} + #{index}, #{item.orderId}, #{item.ino}, #{item.id}, #{item.price}, #{item.amount})
+		</foreach>
+	</insert>
+	
+	<delete id="delete">
+		<![CDATA[
+	    	delete from orderitem 
+			where 1 = 1
+			and orderId = #{orderId}
+		]]>
+	</delete>
+	
+	<delete id="orderItemDelete">
+		<![CDATA[
+	    	delete from orderdetail 
+			where 1 = 1
+			and orderId = #{orderId}
+		]]>
+	</delete>
+	
+	<update id="update">
+		<![CDATA[
+	    	update orderitem set
+	    	postCode = #{postCode},
+	    	address1 = #{address1},
+	    	address2 = #{address2},
+	    	address3 = #{address3},
+	    	phone = #{phone},
+	    	email = #{email}
+			where 1 = 1
+			and id = #{id}
+			and orderId = #{orderId}
+		]]>
+	</update>
+ 
+</mapper>

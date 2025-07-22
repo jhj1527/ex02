@@ -1,0 +1,137 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE mapper PUBLIC "-//mybatis.org//DTD Mapper 3.0//EN" "http://mybatis.org/dtd/mybatis-3-mapper.dtd">
+
+<mapper namespace="com.example.ex02.mapper.ItemMapper">
+	
+	<select id="getList" resultType="com.example.ex02.dto.ItemDto">
+		<![CDATA[
+            select 
+            /*+ index_asc(item SYS_C007008) */
+            ino, category, name, price, amount, discount, content
+			from (
+				select 
+					/*+ index_asc(item SYS_C007008) */
+					rownum rn, ino, category, name, price, amount, discount, content
+					from item
+					where 1 = 1
+					and ino > 0
+        ]]>
+        
+			        <if test='!type.equals("lowPrice") and !type.equals("highPrice") and !type.equals("newItem")'>
+				        <include refid="search"></include>
+			        </if>
+		        
+		        	<![CDATA[
+						and rownum <= #{pageNum} * #{amount}
+		        	]]>
+		        	
+		        	<if test='type.equals("lowPrice")'>
+		        		order by price
+		        	</if>
+		        	
+		        	<if test='type.equals("highPrice")'>
+		        		order by price desc
+		        	</if>
+		        	
+		        	<if test='type.equals("newItem")'>
+		        		order by regdate desc
+		        	</if>
+		<![CDATA[
+				 )
+			where 1 = 1
+			and rn > (#{pageNum} - 1) * #{amount}
+		]]>
+	</select>
+	
+	<select id="get" resultType="com.example.ex02.dto.ItemDto">
+	    <![CDATA[
+            select ino, category, name, price, amount, discount, content
+            from item
+            where 1 = 1 
+            and ino = #{ino}
+        ]]>
+    </select>
+	
+	<select id="getCount" resultType="int" >
+	    <![CDATA[
+            select count(*)
+            from item
+            where 1 = 1 
+            and ino > 0
+        ]]>
+        
+        <if test='!type.equals("lowPrice") and !type.equals("highPrice") and !type.equals("newItem")'>
+	        <include refid="search"></include>
+        </if>
+    </select>
+    <select id="getAmountCount" resultType="int" >
+	    <![CDATA[
+            select amount
+            from item
+            where 1 = 1 
+            and ino = #{ino}
+        ]]>
+    </select>
+    
+    <update id="update">
+    	<![CDATA[
+         	update item set
+			name = #{name},
+			price = #{price},
+			category = #{category},
+			amount = #{amount},
+			discount = #{discount},
+			content = #{content}
+			where 1 = 1
+			and ino = #{ino}
+        ]]>
+	</update>
+	
+	<update id="amountUpdate">
+    	<![CDATA[
+         	update item set
+			amount = amount + #{amount}
+			where 1 = 1
+			and ino = #{ino}
+        ]]>
+	</update>
+
+	<delete id="delete">
+		<![CDATA[
+			delete from item
+			where 1 = 1
+			and ino = #{ino}
+		]]>
+	</delete>
+    
+    <insert id="insert">
+		<selectKey keyProperty="ino" order="BEFORE" resultType="Long">
+			select nvl(max(ino), 0) + 1 from item
+		</selectKey>
+	
+		<![CDATA[
+			insert into item(ino, category, name, price, discount, content) 
+			values(#{ino}, #{category}, #{name}, #{price}, #{discount}, #{content})
+        ]]>
+	</insert>
+    
+    
+    <sql id="search">
+    	<choose>    		
+    		<when test='(keyword == null or keyword.equals("")) and (type == null or type.equals(""))'>
+    			
+    		</when>
+    		<when test='(keyword == null or keyword.equals("")) and (type != null or !type.equals(""))'>
+    			and category = #{type}
+    		</when>
+    		<when test='type == null or type.equals("")'>
+    			and lower(name) like lower('%'||#{keyword}||'%')
+    		</when>
+    		<otherwise>
+    			and category = #{type}
+    			and lower(name) like lower('%'||#{keyword}||'%')
+    		</otherwise>
+    	</choose>
+    </sql>
+ 
+</mapper>

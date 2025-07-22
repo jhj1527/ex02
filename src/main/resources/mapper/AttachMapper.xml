@@ -1,0 +1,38 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE mapper PUBLIC "-//mybatis.org//DTD Mapper 3.0//EN" "http://mybatis.org/dtd/mybatis-3-mapper.dtd">
+
+<mapper namespace="com.example.ex02.mapper.AttachMapper">
+    
+    <insert id="insert">
+		<![CDATA[
+            insert into attach(attachId , ino , filePath , fileName , fileType)
+            values (#{attachId} , #{ino} , #{filePath} , #{fileName} , #{fileType})
+        ]]>
+	</insert>
+
+    <select id="getList" resultType="com.example.ex02.dto.AttachDto">
+		<![CDATA[
+            select attachId, ino, filePath , fileName , fileType
+            from attach
+            where 1 = 1
+            and ino = #{ino}
+        ]]>
+	</select>
+
+    <delete id="delete">
+		<![CDATA[
+            delete from attach
+            where 1 = 1
+            and attachId = #{attachId}
+        ]]>
+	</delete>
+
+	<delete id="deleteAll">
+		<![CDATA[
+			delete from attach
+			where 1 = 1
+			and ino = #{ino}
+		]]>
+	</delete>
+	
+</mapper>

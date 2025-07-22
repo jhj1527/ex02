@@ -1,0 +1,150 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE mapper PUBLIC "-//mybatis.org//DTD Mapper 3.0//EN" "http://mybatis.org/dtd/mybatis-3-mapper.dtd">
+
+<mapper namespace="com.example.ex02.mapper.CartMapper">
+
+	<resultMap id="cartMap" type="com.example.ex02.dto.CartDto" >
+		<id property="cno" column="cno"/>
+		<result property="ino" column="ino" />
+		<result property="id" column="id" />
+		<result property="name" column="name" />
+		<result property="price" column="price" />
+		<result property="amount" column="amount" />
+		<collection property="attachList" column="attachList" ofType="com.example.ex02.dto.AttachDto" notNullColumn="attachId" >
+			<id property="attachId" column="attachId" />
+			<result property="ino" column="ino" />
+			<result property="filePath" column="filePath" />
+			<result property="fileName" column="fileName" />
+			<result property="fileType" column="fileType" />
+		</collection>
+	</resultMap>
+
+	<!-- <resultMap id="itemMap" type="com.example.ex02.dto.ItemDto">
+		<id property="ino" column="ino" />
+		<result property="name" column="name" />
+		<result property="price" column="price" />
+		<result property="discount" column="discount" />
+		<result property="category" column="category" />
+		<result property="content" column="content" />
+		<collection property="attachList" column="attachList" ofType="com.example.ex02.dto.AttachDto" notNullColumn="attachId"  >
+			<id property="attachId" column="attachId" />
+			<result property="ino" column="ino" />
+			<result property="filePath" column="filePath" />
+			<result property="fileName" column="fileName" />
+			<result property="fileType" column="fileType" />
+		</collection>
+	</resultMap> -->
+	
+	<select id="getList" resultMap="cartMap">
+		<![CDATA[
+		    select /*+ index_desc(cart SYS_C007009) */
+			c.cno, c.ino, c.id, c.amount, 
+			CASE WHEN i.discount > 0 THEN (i.price * (100 - i.discount) / 100)
+			ELSE i.price
+			END as price,
+			i.name,
+			a.attachid, a.filePath, a.fileName, a.fileType
+			from cart c
+			LEFT OUTER JOIN item i
+				ON c.ino = i.ino
+			LEFT OUTER JOIN attach a
+				ON i.ino = a.ino
+			where 1 = 1  
+	     	and c.id = #{id}
+	     	order by c.cno desc
+		]]>
+	</select>
+	
+	<select id="getCheckList" resultType="com.example.ex02.dto.CartDto">
+		<![CDATA[
+			select c.cno, c.ino, c.id, c.amount,
+			CASE WHEN i.discount > 0 THEN (i.price * (100 - i.discount) / 100)
+			ELSE i.price
+			END as price,
+			i.name
+			FROM cart c, item i
+			where 1 = 1
+			AND c.ino = i.ino
+			and cno in
+        ]]>
+        <foreach collection="array" open="(" separator="," close=")" item="item">
+        	#{item}
+        </foreach>
+	</select>
+	
+	<select id="get" resultType="com.example.ex02.dto.CartDto">
+		<![CDATA[
+			select cno, ino, id, amount
+			FROM cart 
+			where 1 = 1
+			and ino = #{ino}
+			and id = #{id}
+        ]]>
+	</select>
+	
+	<select id="getCount" resultType="int">
+		<![CDATA[
+			select count(*) 
+			from cart
+			where 1 = 1
+			and id = #{id}
+        ]]>
+	</select>
+	
+	<select id="totalPrice" resultType="int">
+		<![CDATA[
+			select 
+			case when i.discount > 0 THEN nvl(sum(i.price * (100 - i.discount) / 100 * c.amount), 0)
+			else nvl(sum(i.price * c.amount), 0) 
+			end as totalPrice
+			from cart c, item i
+			where 1 = 1 
+			and c.ino = i.ino
+			and c.id = #{id}
+			group by i.discount
+        ]]>
+	</select>
+
+	<insert id="insert">
+		<selectKey keyProperty="cno" resultType="long" order="BEFORE">
+			select nvl(max(cno), 0) + 1 from cart
+		</selectKey>
+		
+		<![CDATA[
+			insert into cart(cno, ino, id, amount) 
+			values(#{cno}, #{ino}, #{id}, #{amount})
+        ]]>
+	</insert>
+	
+	<update id="update">
+		update cart
+		<trim prefix="SET" suffixOverrides=",">
+			<if test='amount > 0'>amount = amount + #{amount},</if>
+		</trim>
+		where 1 = 1 
+		and cno = #{cno}
+	</update>
+	
+	<!-- oracle 은 PL/SQL 구문인 DECLARE DEBIN ...; END; 를 붙여줘야 됨 -->
+	<update id="updateList">
+		<foreach collection="list" item="item" index="index" separator=";" open="DECLARE BEGIN" close="; END;">
+			update cart
+			<set>
+				<if test='item.amount != null'>amount = #{item.amount},</if>
+			</set>
+			<where>
+				1 = 1 
+				and cno = #{item.cno}
+			</where>
+		</foreach>
+	</update>
+	
+	<delete id="delete">
+		<![CDATA[
+			delete from cart
+			where 1 = 1 
+			and cno = #{cno}
+        ]]>
+	</delete>
+
+</mapper>
