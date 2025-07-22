@@ -56,10 +56,19 @@ public class ItemServiceImpl implements ItemService {
 		
 		List<ItemDto> list = itemMapper.getList(dto);
 		
-		for (ItemDto itemDto : list) {
-			List<AttachDto> AttachList = attachMapper.getList(itemDto.getIno());
-			itemDto.setAttachList(AttachList);
-		}
+//		for (ItemDto itemDto : list) {
+//			List<AttachDto> AttachList = attachMapper.getList(itemDto.getIno());
+//			itemDto.setAttachList(AttachList);
+//		}
+		
+		list.stream().forEach(item -> {
+			List<AttachDto> AttachList = attachMapper.getList(item.getIno())
+					.stream()
+					.filter(attach -> attach.getFileName().startsWith("main"))
+					.collect(Collectors.toList());
+			
+			item.setAttachList(AttachList);
+		});
 		
 		Map<String, Object> map = new HashMap<>();
 		map.put("list", list);
@@ -73,10 +82,7 @@ public class ItemServiceImpl implements ItemService {
 		ItemDto dto = itemMapper.get(ino);
 		
 		if (dto != null) {
-			List<AttachDto> list = attachMapper.getList(dto.getIno())
-					.stream()
-//					.filter(a -> a.isFileType())
-					.collect(Collectors.toList());
+			List<AttachDto> list = attachMapper.getList(dto.getIno());
 			
 			dto.setAttachList(list);
 		}

@@ -21,8 +21,7 @@
   });
 
   const selectList = [
-    { title: '상의', value: 'top' }, 
-    { title: '하의', value: 'bottom' }, 
+    { title: '의류', value: 'clothes' }, 
     { title: '모자', value: 'cap' },
     { title: '신발', value: 'shoes' },
   ];
@@ -51,7 +50,6 @@
 
   const getImage = async (item, i) => {
     try {
-      debugger;
       param = {};
       param.filePath = item.filePath;
       param.fileName = item.fileName;
