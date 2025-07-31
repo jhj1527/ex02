@@ -60,7 +60,6 @@ public class ItemController {
 	@PostMapping("/insert")
 	public ResponseEntity<?> insert(@RequestBody ItemDto dto) throws Exception {
 		try {
-//			log.info(dto.toString());
 			itemService.insert(dto);
 			
 		} catch (ApiException e) {

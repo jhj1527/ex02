@@ -3,6 +3,8 @@ import { defineStore } from 'pinia'
 import { commonApi } from '@/service/common';
 
 export const useStore = defineStore('store', () => {
+  let param = {};
+
   const member = ref({
     id : null,
     sessionId : null,
@@ -19,9 +21,11 @@ export const useStore = defineStore('store', () => {
     checkArr : [],
   });
 
+  const itemIno = ref(null);
+
   const getCartCount = async (id) => {
     try {
-      let param = {}
+      param = {};
       param.id = id;
       const res = await commonApi("/api/cart/getCount", "get", param);
       cart.value.count = res.data;
@@ -88,6 +92,7 @@ export const useStore = defineStore('store', () => {
     member,
     pager,
     cart,
+    itemIno,
     getCartCount,
     PostCodeApi,
   }

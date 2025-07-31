@@ -13,6 +13,8 @@ public interface CartMapper {
 	
 	List<CartDto> getCheckList(int[] checkArr);
 	
+	CartDto getByCno(Long cno);
+	
 	CartDto get(CartDto dto);
 	
 	int getCount(String id);

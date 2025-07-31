@@ -25,7 +25,7 @@
 			<result property="ino" column="ino" />
 			<result property="id" column="id" />
 			<result property="name" column="name" />
-			<result property="amount" column="amount" />
+			<result property="quantity" column="quantity" />
 			<result property="price" column="price" />
 			<result property="discount" column="discount" />
 			<!-- property : dto 클래스 컬럼명과 동일 -->
@@ -58,9 +58,10 @@
 			left outer join orderdetail d
 				on o.orderid = d.orderid
 			left outer join (
-			  	select ino, max(filename) as filename, filepath 
-			  	from attach
-				group by ino, filepath
+			  	select *
+				from attach
+				where 1 = 1
+				and lower(filename) like 'main%' OR upper(filename) like 'main%'
 			 	) a
 				on d.ino = a.ino
 			left outer join item i
@@ -99,8 +100,8 @@
 		
 		<!-- selectkey는 한번만 호출 됨으로 foreach 안에 인덱스 값을 더해줘 채번 처리한다. -->
         <foreach collection="list" item="item" index="index" open="" separator=" " close="SELECT * FROM DUAL">
-			into orderdetail(oino, orderId, ino, id, price, amount) values
-			(#{oino} + #{index}, #{item.orderId}, #{item.ino}, #{item.id}, #{item.price}, #{item.amount})
+			into orderdetail(oino, orderId, ino, id, price, quantity) values
+			(#{oino} + #{index}, #{item.orderId}, #{item.ino}, #{item.id}, #{item.price}, #{item.quantity})
 		</foreach>
 	</insert>
 	

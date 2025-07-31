@@ -2,13 +2,11 @@
   import { commonApi } from '@/service/common';
   import { useStore } from '@/stores/store';
   import { storeToRefs } from 'pinia';
-  import { defineProps, defineEmits, reactive, ref, onMounted, computed } from 'vue';
+  import { defineProps, defineEmits, reactive, ref, onMounted, computed, shallowRef } from 'vue';
   import { useRouter } from 'vue-router';
   import dayjs from 'dayjs';
-  import { shallowRef } from 'vue'
   import ReplyView from '../reply/ReplyView.vue';
   
-
   const dialog = shallowRef(false);
   const router = useRouter();
   const store = useStore();

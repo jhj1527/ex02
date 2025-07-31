@@ -39,7 +39,7 @@ public class OrderDto {
 		private Long ino;
 		private String id;
 		private String name;
-		private int amount;
+		private int quantity;
 		private int price;
 		private int discount;
 		private AttachDto attachDto;

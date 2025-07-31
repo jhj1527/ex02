@@ -1,285 +1,296 @@
-<script>
+<script setup>
   import { commonApi } from '@/service/common';
   import { useStore } from '@/stores/store';
-  import { mapState } from 'pinia';
+  import { storeToRefs } from 'pinia';
+  import { RouterLink, useRouter, onBeforeRouteLeave } from 'vue-router';
+  import { onMounted, reactive, ref, computed, defineProps } from 'vue';
 
-  export default {
-    name : "ListView",
-    data() {
-      return {
-        result: [],
-        checkedArr: [],
-        param: {},
-        totalPrice: 0,
-        charge : 0,
-        mainSrc : [],
-        store : useStore(),
-      };
+  const store = useStore();
+  const { member, cart } = storeToRefs(store);
+  const router = useRouter();
+  const result = ref([]);
+  let param = {};
+  const mainSrc = ref([]);
+  const checkedArr = ref([]);
+  const btnDisabled = reactive({
+    minus: [],
+    plus: [],
+  });
+
+  onMounted(() => {
+    getList();
+  });
+
+  onBeforeRouteLeave((to, from, next) => {
+    allUpdate();
+
+    mainSrc.value.forEach((item) => {
+      URL.revokeObjectURL(item);
+    });
+
+    if (to.fullPath !== '/order/insert') {
+      cart.value.checkArr = [];
+    }
+    next();
+  });
+
+  const priceFormat = computed(() => {
+    return price => price > 0 ? price.toLocaleString() : 0
+  });
+
+  // const increase = computed(() => {
+  //   return idx => result.value[idx].quantity < 10 ? result.value[idx].quantity++ : result.value[idx].quantity = 10;
+  // });
+
+  // const decrease = computed(() => {
+  //   return idx => result.value[idx].quantity > 1 ? result.value[idx].quantity-- : result.value[idx].quantity = 1;
+  // });
+
+  const allCheck = computed({
+    get() {
+      return result.value?.length === checkedArr.value?.length;
     },
-    // props: {
-    //   id: String,
-    // },
-    mounted() {
-      this.get(this.member.id);
+    set(value) {
+      value ? checkedArr.value = result.value?.map(item => item.cno) : checkedArr.value = [];
     },
-    beforeRouteLeave(to, from, next) {
-      // 뒤로가기 시 실행될 로직
-      if (this.result && this.result.length > 0) {
-        this.allUpdate();
+  });
+
+  const subtotal = computed(() => {
+    return result.value?.filter(item => checkedArr.value.includes(item.cno))
+      .reduce((sum, item) => sum + (item.price * item.quantity), 0);
+  });
+
+  const charge = computed(() => {
+    return subtotal.value >= 10000 || subtotal.value === 0 ? 0 : 100;
+  });
+
+  const increase = (item, i) => {
+    item.amount--;
+    item.quantity++;
+    item.amount === 0 ? btnDisabled.plus[i] = true : btnDisabled.plus[i] = false
+    item.quantity <= 1 ? btnDisabled.minus[i] = true : btnDisabled.minus[i] = false
+  };
+
+  const decrease = (item, i) => {
+    item.amount++;
+    item.quantity > 1 ? item.quantity-- : item.quantity = 1;
+    item.amount === 0 ? btnDisabled.plus[i] = true : btnDisabled.plus[i] = false
+    item.quantity <= 1 ? btnDisabled.minus[i] = true : btnDisabled.minus[i] = false
+  };
+
+  const getList = async() => {
+    param = {};
+    param.id = member.value.id;
+    const res = await commonApi("/api/cart/list", 'GET', param);
+
+    result.value = res.data;
+    console.log(result.value);
+
+    result.value?.forEach((item, idx) => {
+      if (item.attachList.length > 0) {
+        getImage(item.attachList[0], idx);
       }
 
-      // 모든 이미지 URL 메모리에서 제거
-      this.mainSrc.forEach((item, i) => {
-        URL.revokeObjectURL(item);
-      });
+      item.amount === 0 ? btnDisabled.plus.push(true): btnDisabled.plus.push(false)
 
-      next();
-    },
+      btnDisabled.minus.push(false);
+    });
 
-    computed: {
-      ...mapState(useStore, ["member", "cart"]),
-      priceFormat() {
-        return price => price > 0 ? price.toLocaleString() : 0;
-      },
-      increase() {
-        return idx => this.result[idx].amount < 10 ? this.result[idx].amount++ : this.result[idx].amount = 10;
-      },
-      decrease() {
-        return idx => this.result[idx].amount > 1 ? this.result[idx].amount-- : this.result[idx].amount = 1;
-      },
-      allCheck : {
-        get() {
-          return this.result.length === this.checkedArr.length;
-        },
-        set(value) {
-          value ? this.checkedArr = this.result.map(item => item.cno) : this.checkedArr = [];
-        },
-      },
-      total() {
-        // const res = [...this.result];
+    checkedArr.value = result.value?.map(item => item.cno);
+  };
+
+  const getImage = async (item, i) => {
+    try {
+      param = {};
+      param.filePath = item.filePath;
+      param.fileName = item.fileName;
+  
+      const res = await commonApi("/api/file/getFile", "get", param);
+      // console.log(res.data);
+      
+      const url = URL.createObjectURL(res.data); // url 생성
+ 
+      // mainSrc.value.push(url);
+      mainSrc.value[i] = url;
+
+    } catch (e) { 
+      console.log(e);
+    }
+  };
+
+  const removeItem = async(item, idx) => {
+    try {
+      param = {};
+      param.cno = item.cno;
+      
+      const res = await commonApi("/api/cart/delete", 'delete', param);
+      
+      if (res.status === 200) {
+        alert("delete");
         
-        return this.result
-        .filter(item => this.checkedArr.includes(item.cno))
-        .reduce((sum, item) => sum + (item.price * item.amount), 0);
-      },
-      fee() {
-        return this.total >= 30000 || this.total === 0 ? 0 : 100;
-      },
-    },
-    methods : {
-      async get(id) {
-        this.param = {};
-        this.param.id = id;
-        const res = await commonApi("/api/cart/list", 'GET', this.param);
-
-        this.result = res.data;
-        // console.log(this.result);
-
-        this.result.forEach((item, i) => {
-          if (item.attachList.length > 0) {
-            this.getImage(item.attachList[0], i);
-          }
-        });
-
-        this.checkedArr = this.result.map(item => item.cno);
-      },
-      async getImage(image, i) {
-        try {
-          this.param = {};
-          this.param.filePath = image.filePath;
-          this.param.fileName = image.fileName;
-
-          const res = await commonApi("/api/file/getFile", "GET", this.param);
-          // console.log(res.data);
-          
-          const url = URL.createObjectURL(res.data); // url 생성
-          this.mainSrc.push(url);
-          this.$refs.mainImage[this.mainSrc.length-1].src = url;
-
-        } catch (e) {
-          console.log(e);
+        const index = checkedArr.value.findIndex(i => i === item.cno);
+        if (index > -1) {
+          checkedArr.value.splice(index, 1);
         }
-      },
-      async removeItem(item, idx) {
-        try {
-          this.param = {};
-          this.param.cno = item.cno;
-          
-          const res = await commonApi("/api/cart/delete", 'delete', this.param);
-          if (res.status === 200) {
-            alert("delete");
-            
-            const index = this.checkedArr.findIndex(i => i === item.cno);
-            if (index > -1) {
-              this.checkedArr.splice(index, 1);
-            }
+
+        result.value.splice(idx, 1);
+        // result.value = result.value.filter(c => c.cno !== item.cno);
+
+        store.getCartCount(member.value.id);
+      }
+      
+    } catch (e) {
+      console.log(e);
+    }
+  };
+
+  const allUpdate = async() => {
+    try {
+      const res = await commonApi("/api/cart/updateList", "patch", result.value);
+  
+      // console.log(res);
+      
+    } catch (e) {
+      console.log(e);
+    }
+  };
+
+  const checkOut = () => {
+    // 얕은 복사(스프레드 연산자)시 복사본 수정시 원본도 수정 되므로 깊은복사 
+    let res = {"list" : JSON.parse(JSON.stringify(result.value))};
+    res = res.list.filter(item => checkedArr.value.some(cno => item.cno === cno))
+    .filter(item => delete item.attachList);
     
-            this.result.splice(idx, 1);
-            // this.result = this.result.filter(c => c.cno !== item.cno);
-  
-            this.store.getCartCount(this.member.id);
-          }
-          
-        } catch (e) {
-          console.log(e);
-        }
-      },
-      amountChange(e, idx) {
-        if (e.target.value > 10) {
-          e.target.value = 10;
+    res.charge = charge.value;
+    res.totalPrice = subtotal.value;
+    console.log(res);
 
-        } else if (e.target.value < 1) {
-          e.target.value = 1;
-        }
-        this.result[idx].amount = e.target.value;
-      },
-      async allUpdate() {
-        try {
-          const res = await commonApi("/api/cart/updateList", "patch", this.result);
-  
-          console.log(res);
-          
-        } catch (e) {
-          console.log(e);
-        }
-      },
-      async checkOut() {
-        // 얕은 복사(스프레드 연산자)시 복사본 수정시 원본도 수정 되므로 깊은복사 
-        let res = {"list" : JSON.parse(JSON.stringify(this.result))};
-        res = res.list.filter(item => this.checkedArr.some(cno => item.cno === cno))
-        .filter(item => delete item.attachList);
-        
-        res.charge = this.fee;
-        res.totalPrice = this.total;
-        // console.log(res);
+    cart.value.checkArr = [];
+    cart.value.checkArr.length = 0;
+    cart.value.checkArr.push(checkedArr.value);
 
-        this.cart.checkArr = [];
-        this.cart.checkArr.length = 0;
-        this.cart.checkArr.push(this.checkedArr);
-        
-        this.$router.push({
-          name : "orderInsert", 
-          // state: {
-          //   checkArr : this.checkedArr,
-          // },
-        });
-      }
-    },
+    router.push("/order/insert");
+    
+  };
+
+
+  const applyCoupon = () => {
+
   }
+
 </script>
 
 <template>
-  <div class="container my-5">
+  <v-container>
+    <!-- Products List -->
     {{ checkedArr }}
-    <div class="row">
-      <!-- Cart Table -->
-      <div class="col-lg-8">
-        <table class="table align-middle">
-          <thead>
-            <tr>
-              <th scope="col">
-                <!-- <input type="checkbox" :checked="result.length && result.every(item => item.checked)" @change="toggleAll($event)"> -->
-                 <input type="checkbox" v-model="allCheck">
-              </th>
-              <th scope="col">Products</th>
-              <th scope="col">Name</th>
-              <th scope="col">Price</th>
-              <th scope="col">Quantity</th>
-              <th scope="col">subTotal</th>
-              <th scope="col"></th>
-            </tr>
-          </thead>
-          <tbody>
-            <tr v-for="(item, idx) in result" :key="item.cno">
-              <td>
-                <input type="checkbox" v-model="checkedArr" :id="item.name" :value="item.cno" :index="item.cno">
-                <label :for="item.name"></label>
-              </td>
-              <td>
-                <!-- :src="`http://localhost:8081/api/file/getFile?filePath=${item.attachList[0].filePath}&fileName=${item.attachList[0].fileName}`" -->
-                <img 
-                  v-if="item.attachList.length > 0"
-                  :src="mainSrc"
-                  ref="mainImage"  
-                  alt="" class="rounded" style="width:70px; height:70px; object-fit:cover;" />
-                <img v-else 
-                  src="https://dummyimage.com/450x300/dee2e6/6c757d.jpg" 
-                  alt="" class="rounded" style="width:70px; height:70px; object-fit:cover;" />
-              </td>
-              <td>{{ item.name }}</td>
-              <td>{{ priceFormat(item.price) }}</td>
-              <td>
-                <div class="d-flex align-items-center">
-                  <button @click="decrease(idx)" class="btn btn-outline-secondary btn-sm rounded-circle me-2">
-                    <i class="bi bi-dash"></i>
-                  </button>
-                  <!-- <input type="text" v-model="item.amount" @change="amountChange($event, idx)" style="width:30px; text-align: center;" > -->
-                  <span>{{ item.amount }}</span>
-                  <button @click="increase(idx)" class="btn btn-outline-secondary btn-sm rounded-circle ms-2">
-                    <i class="bi bi-plus"></i>
-                  </button>
-                </div>
-              </td>
-              <td>{{ priceFormat(item.price * item.amount) }}</td>
-              <td>
-                <button class="btn btn-outline-danger btn-sm rounded-circle"
-                  @click="removeItem(item, idx)">
-                  <i class="bi bi-x"></i>
-                </button>
-              </td>
-            </tr>
-          </tbody>
-        </table>
-        <!-- Coupon -->
-        <!-- <div class="row mt-4">
-          <div class="col-md-4">
-            <input type="text" class="form-control" placeholder="Coupon Code" v-model="coupon">
-          </div>
-          <div class="col-md-4">
-            <button class="btn btn-primary px-4" @click="applyCoupon">
-              Apply Coupon
-            </button>
-          </div>
-        </div> -->
-      </div>
-      <!-- Cart Summary -->
-      <div class="col-lg-4">
-        <div class="bg-light rounded p-4 ms-lg-4 mt-4 mt-lg-0">
-          <h3 class="fw-bold mb-4"><span class="fw-bolder">Cart</span> Total</h3>
-          <div class="d-flex justify-content-between mb-2">
-            <span>total:</span>
-            <span>{{ priceFormat(total) }}</span>
-          </div>
-          <div class="mb-2">
-            <div class="d-flex justify-content-between">
-              <span>fee</span>
-              <span>Flat rate: {{ priceFormat(fee) }}</span>
+    <v-table striped="even">
+      <thead>
+        <tr>
+          <th class="text-center"><input type="checkbox" v-model="allCheck" /></th>
+          <th class="text-center">Products</th>
+          <th class="text-center">Name</th>
+          <th class="text-center">Price</th>
+          <th class="text-center">Quantity</th>
+          <th>Total</th>
+          <th>delete</th>
+        </tr>
+      </thead>
+      <tbody>
+        <tr v-for="(item, i) in result" :key="item.cno">
+          <td class="text-center">
+            <!-- <v-checkbox
+              v-model="checkedArr"
+              :value="item.cno"
+            ></v-checkbox> -->
+            <input type="checkbox" v-model="checkedArr" :id="item.name" :value="item.cno">
+            <label :for="item.name"></label>
+          </td>
+          <td width="150" class="text-center">
+            <v-img v-if="item.attachList.length > 0" :src="mainSrc[i]" width="100" height="100" cover />
+          </td>
+          <td class="text-center">{{ item.name }}</td>
+          <td class="text-center">{{ priceFormat(item.price) }}</td>
+          <td class="text-center">
+            <v-btn 
+              @click="decrease(item, i)"
+              :disabled="btnDisabled.minus[i]" 
+              density="compact" 
+              icon="mdi-minus" 
+              variant="text" 
+            ></v-btn>
+            <span class="mx-2">{{ item.quantity }}</span>
+            <v-btn 
+              @click="increase(item, i)"
+              :disabled="btnDisabled.plus[i]" 
+              density="compact" 
+              icon="mdi-plus" 
+              variant="text"
+            ></v-btn>
+          </td>
+          <td>{{ priceFormat(item.price * item.quantity) }}</td>
+          <td>
+            <v-btn color="error" icon="mdi-close" variant="text" @click="removeItem(item, i)" />
+          </td>
+        </tr>
+      </tbody>
+    </v-table>
+
+    <!-- Coupon Section -->
+    <v-row class="mt-6">
+      <v-col cols="12" md="6">
+        <!-- <h4>사용 가능 Point : 1000p</h4> -->
+        <v-number-input 
+          control-variant="hidden"
+          prepend-icon="mdi-pencil"
+          variant="outlined"
+          density="compact"
+          label="point"
+          :min="0"
+          :max="10000"
+          required 
+        ></v-number-input>
+        <v-btn color="primary" class="mt-2" @click="applyCoupon">
+          Apply Point
+        </v-btn>
+      </v-col>
+
+      <!-- Cart Total -->
+      <v-col cols="12" md="6">
+        <v-card>
+          <v-card-title>Cart Total</v-card-title>
+          <v-card-text>
+            <div class="d-flex justify-space-between mb-2">
+              <span>Subtotal:</span>
+              <span>{{ priceFormat(subtotal) }}</span>
             </div>
-          </div>
-          <hr>
-          <div class="d-flex justify-content-between mb-4">
-            <span class="fw-bold">Total</span>
-            <span class="fw-bold">{{priceFormat(total + fee)}}</span>
-          </div>
-          <button @click="checkOut" class="btn btn-outline-warning w-100 py-2 fw-bold">
-            PROCEED CHECKOUT
-          </button>
-        </div>
-      </div>
-    </div>
-  </div>
+            <div class="d-flex justify-space-between mb-2">
+              <span>Shipping:</span>
+              <div class="text-right">
+                <div>Flat rate: {{ charge }}</div>
+              </div>
+            </div>
+            <v-divider class="my-2"></v-divider>
+            <div class="d-flex justify-space-between mb-4">
+              <span class="text-h6">Total:</span>
+              <span class="text-h6">{{ priceFormat(subtotal + charge) }}</span>
+            </div>
+            <v-btn
+              @click="checkOut"
+              :disabled="checkedArr.length > 0 ? false : true"
+              color="success"
+              block
+              text="CHECKOUT"
+            ></v-btn>
+          </v-card-text>
+        </v-card>
+      </v-col>
+    </v-row>
+  </v-container>
 </template>
 
 <style scoped>
-  .table th, .table td {
-    vertical-align: middle;
-  }
-  /* .btn-outline-warning {
-    color: #8bc34a;
-    border-color: #ffeb3b;
-  }
-  .btn-outline-warning:hover {
-    background: #ffeb3b;
-    color: #333;
-  } */
+.v-table {
+  background: transparent;
+}
 </style>

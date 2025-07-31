@@ -81,17 +81,14 @@ public class CartController {
 			return new ResponseEntity<>("insert", HttpStatus.CREATED);
 			
 		} catch (ApiException e) {
-			log.error(e.getMessage());
-			
-			if (e.getMessage().equals("수량초과")) {
-				return new ResponseEntity<>(e.getMessage(), e.getError().getType());
-				
-			} else {
+			if (e.getMessage().equals("카트중복")) {
 				HttpHeaders httpHeaders = new HttpHeaders();
 				httpHeaders.setLocation(new URI("/api/cart/update"));
 				
 				return new ResponseEntity<>(httpHeaders, HttpStatus.PERMANENT_REDIRECT);
-			}
+			} 
+			
+			return ApiErrorResponse(e);
 			
 		} catch (Exception e) {
 			e.printStackTrace();
@@ -118,18 +115,16 @@ public class CartController {
 	@PatchMapping("/updateList")
 	public ResponseEntity<?> updateList(@RequestBody List<CartDto> list) {
 		try {
-//			list.stream().forEach(c -> {
-//				log.info(c.toString());
-//			});
-			
 			cartService.updateList(list);
 			
 			return new ResponseEntity<>("updateList", HttpStatus.OK);
 			
 		} catch (ApiException e) {
+			e.printStackTrace();
 			return ApiErrorResponse(e);
 			
 		} catch (Exception e) {
+			e.printStackTrace();
 			return errorResponse(e);
 		}
 	}
@@ -153,7 +148,7 @@ public class CartController {
 		Map<String, Object> map = new HashMap<>();
 		map.put("message", e.getError().getMessage());
 		
-		return ResponseEntity.internalServerError().body(map);
+		return new ResponseEntity<>(map, e.getError().getType());
 	}
 	
 	public ResponseEntity<?> errorResponse(Exception e) {

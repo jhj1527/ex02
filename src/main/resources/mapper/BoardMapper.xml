@@ -118,10 +118,10 @@
     			
     		</when>
     		<when test="type == 'tc' or type.equals('tc')">
-    			and title like '%'||#{keyword}||'%' or content like '%'||#{keyword}||'%'
+    			and lower(title) like lower('%'||#{keyword}||'%') or lower(content) like lower('%'||#{keyword}||'%')
     		</when>
     		<when test='(type != null or !type.equals("")) and (keyword != null or !keyword.equals(""))'>
-    			and ${type} like '%'||#{keyword}||'%'
+    			and ${type} like lower('%'||#{keyword}||'%')
     		</when>
     	</choose>
     </sql>

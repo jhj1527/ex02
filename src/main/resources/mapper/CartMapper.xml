@@ -9,6 +9,7 @@
 		<result property="id" column="id" />
 		<result property="name" column="name" />
 		<result property="price" column="price" />
+		<result property="quantity" column="quantity" />
 		<result property="amount" column="amount" />
 		<collection property="attachList" column="attachList" ofType="com.example.ex02.dto.AttachDto" notNullColumn="attachId" >
 			<id property="attachId" column="attachId" />
@@ -19,30 +20,14 @@
 		</collection>
 	</resultMap>
 
-	<!-- <resultMap id="itemMap" type="com.example.ex02.dto.ItemDto">
-		<id property="ino" column="ino" />
-		<result property="name" column="name" />
-		<result property="price" column="price" />
-		<result property="discount" column="discount" />
-		<result property="category" column="category" />
-		<result property="content" column="content" />
-		<collection property="attachList" column="attachList" ofType="com.example.ex02.dto.AttachDto" notNullColumn="attachId"  >
-			<id property="attachId" column="attachId" />
-			<result property="ino" column="ino" />
-			<result property="filePath" column="filePath" />
-			<result property="fileName" column="fileName" />
-			<result property="fileType" column="fileType" />
-		</collection>
-	</resultMap> -->
-	
 	<select id="getList" resultMap="cartMap">
 		<![CDATA[
 		    select /*+ index_desc(cart SYS_C007009) */
-			c.cno, c.ino, c.id, c.amount, 
+			c.cno, c.ino, c.id, c.quantity, 
 			CASE WHEN i.discount > 0 THEN (i.price * (100 - i.discount) / 100)
 			ELSE i.price
 			END as price,
-			i.name,
+			i.name, i.amount,
 			a.attachid, a.filePath, a.fileName, a.fileType
 			from cart c
 			LEFT OUTER JOIN item i
@@ -57,7 +42,7 @@
 	
 	<select id="getCheckList" resultType="com.example.ex02.dto.CartDto">
 		<![CDATA[
-			select c.cno, c.ino, c.id, c.amount,
+			select c.cno, c.ino, c.id, c.quantity,
 			CASE WHEN i.discount > 0 THEN (i.price * (100 - i.discount) / 100)
 			ELSE i.price
 			END as price,
@@ -72,9 +57,18 @@
         </foreach>
 	</select>
 	
+	<select id="getByCno" resultType="com.example.ex02.dto.CartDto" >
+	    <![CDATA[
+            select cno, ino, id, quantity
+			FROM cart 
+			where 1 = 1
+			and cno = #{cno}
+        ]]>
+    </select>
+	
 	<select id="get" resultType="com.example.ex02.dto.CartDto">
 		<![CDATA[
-			select cno, ino, id, amount
+			select cno, ino, id, quantity
 			FROM cart 
 			where 1 = 1
 			and ino = #{ino}
@@ -94,8 +88,8 @@
 	<select id="totalPrice" resultType="int">
 		<![CDATA[
 			select 
-			case when i.discount > 0 THEN nvl(sum(i.price * (100 - i.discount) / 100 * c.amount), 0)
-			else nvl(sum(i.price * c.amount), 0) 
+			case when i.discount > 0 THEN nvl(sum(i.price * (100 - i.discount) / 100 * c.quantity), 0)
+			else nvl(sum(i.price * c.quantity), 0) 
 			end as totalPrice
 			from cart c, item i
 			where 1 = 1 
@@ -111,15 +105,15 @@
 		</selectKey>
 		
 		<![CDATA[
-			insert into cart(cno, ino, id, amount) 
-			values(#{cno}, #{ino}, #{id}, #{amount})
+			insert into cart(cno, ino, id, quantity) 
+			values(#{cno}, #{ino}, #{id}, #{quantity})
         ]]>
 	</insert>
 	
 	<update id="update">
 		update cart
 		<trim prefix="SET" suffixOverrides=",">
-			<if test='amount > 0'>amount = amount + #{amount},</if>
+			<if test='quantity > 0'>quantity = quantity + #{quantity},</if>
 		</trim>
 		where 1 = 1 
 		and cno = #{cno}
@@ -130,7 +124,7 @@
 		<foreach collection="list" item="item" index="index" separator=";" open="DECLARE BEGIN" close="; END;">
 			update cart
 			<set>
-				<if test='item.amount != null'>amount = #{item.amount},</if>
+				<if test='item.quantity != null'>quantity = #{item.quantity},</if>
 			</set>
 			<where>
 				1 = 1 

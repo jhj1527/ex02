@@ -1,274 +1,289 @@
-<script>
+<script setup>
   import { commonApi } from '@/service/common';
   import { useStore } from '@/stores/store';
-  import { mapState } from 'pinia';
+  import { storeToRefs } from 'pinia';
+  import { useRouter, onBeforeRouteLeave } from 'vue-router';
+  import { onMounted, reactive, ref, computed, defineProps, watch } from 'vue';
 
-  export default {
-    name: 'GetView',
-    data() {
-      return {
-        mainSrc: {},
-        subSrc: {},
-        result : {},
-        idx: 0,
-        active : "",
-        input: {
-          ino: "", 
-          id: "",
-          amount: 1,
-          price: "",
-        },
-        store : useStore(),
-      };
-    },
-    mounted() {
-      this.get(this.ino);
-    },
-    computed: {
-      ...mapState(useStore, ["member", "cart"]),
-      priceFormat() {
-        return price => price ? price.toLocaleString() : '';
-      },
-      realPrice() {
-        return this.result.discount > 0 ? 
-        this.result.price * (100 - this.result.discount) / 100 * this.input.amount 
-        : this.result.price * this.input.amount;
-      },
-      increase() {
-        return value => this.input.amount < 10 ? this.input.amount++ : this.input.amount = 10;
-      },
-      decrease() {
-        return value => this.input.amount > 1 ? this.input.amount-- : this.input.amount = 1;
-      },
-    },
-    beforeDestroy() {
-      // 메인 이미지 URL 메모리에서 제거
-      URL.revokeObjectURL(this.$refs.mainImage.src);
-      // 모든 서브 이미지 URL 메모리에서 제거
-      this.result.attachList.forEach((item, i) => {
-        URL.revokeObjectURL(this.$refs.subImage[i].src);
-      });
-    },
-    methods: {
-      async get(ino) {
-        try {
-          const res = await commonApi(`/api/item/${ino}`, 'GET');
+  const store = useStore();
+  const { member, cart } = storeToRefs(store);
+  const router = useRouter();
+  const props = defineProps(["ino"]);
+  const result = ref({});
+  const input = reactive({
+    ino: props.ino,
+    id: member.value.id || "",
+    quantity: 0,
+    price: "",
+  });
+  let param = {};
+  const mainSrc = ref([]);
+  const subSrc = ref([]);
+  const rating = ref(4)
+  const reviewRating = ref(4)
+  const tab = ref('description')
+  const reviewDate = 'April 12, 2024'
+  const isDisabled = reactive({
+    minus: false,
+    plus: false,
+    addCart: false,
+  });
 
-          console.log(res);
+  onMounted(() => {
+    get();
+  });
 
-          if (res.status == 200) {
-              this.result = res.data;
-              this.result.attachList.forEach((item, i) => {
-                this.getImage(item, i);
-              });
+  onBeforeRouteLeave((to, from, next) => {
+    mainSrc.value.forEach((item) => {
+      URL.revokeObjectURL(item);
+    });
+
+    subSrc.value.forEach((item) => {
+      URL.revokeObjectURL(item);
+    });
+
+    next();
+  });
+
+  watch(() => input.quantity,
+    (newValue, oldValue) => {
+      result.value.amount = result.value.amount + oldValue - newValue;
+      result.value.amount === 0 ? isDisabled.plus = true : isDisabled.plus = false;
+      newValue <= 1 ? isDisabled.minus = true : isDisabled.minus = false;
+    },
+    { deep: true },
+  );
+
+  const priceFormat = computed(() => {
+    return price => price > 0 ? price.toLocaleString() : 0
+  });
+
+  const increment = computed(() => {
+    return value => input.quantity++;
+  });
+
+  const decrement = computed(() => {
+    return value => input.quantity > 1 ? input.quantity-- : input.quantity = 1;
+  });
+
+  const realPrice = computed(() => {
+    return result.value.discount > 0 ? 
+      Math.round(result.value.price * (1 - result.value.discount / 100)) * input.quantity 
+      : result.value.price * input.quantity
+  });
+
+  const get = async () => {
+    try {
+      const res = await commonApi(`/api/item/${props.ino}`, 'GET');
+
+      // console.log(res);
+
+      if (res.status == 200) {
+          result.value = res.data;
+
+          if (result.value.amount === 0) {
+            isDisabled.addCart = true;
+            isDisabled.plus = true;
+            isDisabled.minus = true;
+            input.quantity = 0;
+
+          } else {
+            input.quantity = 1;
           }
           
-        } catch (e) {
-          console.log(e);
-        }
-      },
-      async getImage(image, i) {
-        try {
-          const params = {
-            filePath: image.filePath,
-            fileName: image.fileName
-          };
+          if (result.value.category === 'clothes') {
+            result.value.category = '의류';
 
-          const res = await commonApi("/api/file/getFile", "GET", params);
+          } else if (result.value.category === 'cap') {
+            result.value.category = '모자';
 
-          // console.log(res.data);
-          // url 생성
-          const url = URL.createObjectURL(res.data);
-          
-          if (i === 0) {
-            this.mainSrc.url = url;
-            this.$refs.mainImage.src = url;
-          } 
-
-          this.subSrc.url = url;
-          this.$refs.subImage[i].src = url;
-
-        } catch (e) {
-          console.log(e);
-        }
-      },
-      // increase() {
-      //   this.input.amount++;
-      //   if (this.input.amount > 10) this.input.amount = 10;
-      // },
-      // decrease() {
-      //   this.input.amount--;
-      //   if (this.input.amount < 1) this.input.amount = 1;
-      // },
-      async addCart() {
-        this.input.ino = this.ino;
-        this.input.id = this.member.id;
-        this.input.price = this.realPrice;
-
-        console.log(this.input);
-
-        const res = await commonApi("/api/cart/insert", "post", this.input);
-
-        if (res.status === 201 || res.status === 200) {
-            alert("insert");
-
-            this.store.getCartCount(this.input.id);
-        }
-      },
-      imageChange(e, i) {
-        this.$refs.mainImage.src = this.$refs.subImage[i].src;
-        // this.idx = i;
-      },
-      updateItem() {
-        this.$router.push("/item/update/" + this.ino);
-      },
-      async deleteItem() {
-        if (confirm("삭제 하시겠습니까?")) {
-          const param = {
-            ino : this.ino
-          };
-
-          const res = await commonApi("/api/item/delete", "DELETE", param);
-          
-          // console.log(res);
-
-          if (res.status === 200) {
-            alert("delete");
-            this.$router.push("/item/list");
+          } else if (result.value.category === 'shoes') {
+            result.value.category = '신발';
           }
-        }
-      },
-    },
-    props: {
-      ino: [Number, String]
-    },
-  }
+          
+          result.value.attachList.forEach((item, i) => {
+            getImage(item, i);
+          });
+      }
+      
+    } catch (e) {
+      console.log(e);
+    }
+  };
+
+  const getImage = async (item, i) => {
+    try {
+      param = {};
+      param.filePath = item.filePath;
+      param.fileName = item.fileName;
+  
+      const res = await commonApi("/api/file/getFile", "get", param);
+      // console.log(res.data);
+      
+      const url = URL.createObjectURL(res.data); // url 생성
+      if (item.fileName.startsWith("main")) {
+        mainSrc.value[0] = url;
+        subSrc.value.unshift(url); // 배열 맨앞에 추가
+        
+      } else {
+        subSrc.value.push(url);
+        // subSrc.value[i] = url;
+      }
+      
+    } catch (e) { 
+      console.log(e);
+    }
+  };
+
+  const addCart = async () => {
+    try {
+      input.price = realPrice.value;
+
+      // console.log(input);
+
+      const res = await commonApi("/api/cart/insert", "post", input);
+
+      if (res.status === 201 || res.status === 200) {
+        alert("insert");
+        store.getCartCount(input.id);
+
+      } else if (res.status === 400) {
+        alert(res.data.message);
+      }
+      
+    } catch (e) { 
+      console.log(e);
+    }
+  };
+ 
 </script>
 
 <template>
-  <div class="container my-5">
-    <div class="row">
-      <!-- Product Images -->
-      <div class="col-md-6 d-flex flex-column align-items-center">
-        <!-- Main Image -->
-         <!-- :src="`http://localhost:8081/api/file/getFile?filePath=${result.attachList[0].filePath}&fileName=${result.attachList[0].fileName}`" -->
-        <img
-          v-if="result.attachList && result.attachList.length"
-          :src="mainSrc"
-          ref="mainImage"
-          alt="메인 이미지"
-          class="img-fluid mb-3"
-          style="max-height: 350px; object-fit: contain;"
-        />
-        <div v-else class="bg-light d-flex align-items-center justify-content-center mb-3" style="width:100%; height:350px;">
-          <span class="text-muted">이미지가 없습니다</span>
-        </div>
-        <!-- Thumbnails -->
-        <div v-if="result.attachList && result.attachList.length > 0" class="d-flex gap-2">
-          <!-- :src="`http://localhost:8081/api/file/getFile?filePath=${item.filePath}&fileName=${item.fileName}`" -->
-          <img
-            v-for="(item, i) in result.attachList"
-            :key="item.attachId"
-            :src="subSrc"
-            ref="subImage"
-            alt="썸네일"
-            :index="i"
-            class="img-thumbnail"
-            :class="i === idx ? 'border-primary' : ''"
-            style="width: 70px; height: 70px; object-fit: cover; cursor: pointer;"
-            @click="imageChange($event, i)"
-          />
-        </div>
-      </div>
-      <!-- Product Details -->
-      <div class="col-md-6">
-        <h2 class="mb-3">{{result.name}}</h2>
-        <p class="text-muted">카테고리: {{result.category}}</p>
+  <v-container class="py-8">
+    <v-row>
+      <!-- Main Image -->
+      <v-col cols="12" md="6">
+        <v-img
+          :src="mainSrc[0]"
+          height="400"
+          cover
+          class="bg-grey-lighten-2 rounded-lg"
+        ></v-img>
         
-        <h4 class="text-primary mb-3">{{ priceFormat(realPrice) }}</h4>
-        <!-- <p>
-          이 상품은 최신 기술이 적용된 고품질 제품입니다. 다양한 기능과 세련된 디자인으로 일상에 편리함을 더해줍니다.
-        </p>
-        <ul class="list-group mb-3">
-          <li class="list-group-item">특징 1: 고성능</li>
-          <li class="list-group-item">특징 2: 합리적인 가격</li>
-          <li class="list-group-item">특징 3: 1년 무상 A/S</li>
-        </ul> -->
-        <div class="mb-3 d-flex align-items-center">
-          <label for="amount" class="form-label me-3 mb-0">수량</label>
-          <button type="button" class="btn btn-outline-secondary" @click="decrease">
-            <i class="bi bi-dash"></i>
-          </button>
-          <span class="mx-3">{{ input.amount }}</span>
-          <button type="button" class="btn btn-outline-secondary" @click="increase">
-            <i class="bi bi-plus"></i>
-          </button>
+        <!-- Thumbnail Images -->
+        <v-row v-if="subSrc.length > 1" class="mt-4">
+          <v-col v-for="(src, i) in subSrc" :key="i" cols="3">
+            <v-img
+              :src="src"
+              :width="100"
+              :height="100"
+              cover
+              class="bg-grey-lighten-2 rounded cursor-pointer"
+              @click="mainSrc[0] = src"
+            ></v-img>
+          </v-col>
+        </v-row>
+      </v-col>
+
+      <!-- Product Info -->
+      <v-col cols="12" md="6">
+        <h2 class="font-weight-bold mb-2">{{ result.name }}</h2>
+        <div class="text-grey mb-2">Category: {{ result.category }}</div>
+        <div class="text-h5 font-weight-bold mb-1">
+          <span v-if="result.discount && result.discount > 0" class="text-error mr-2">
+            {{ result.discount }}%
+          </span>
         </div>
-        <button class="btn btn-primary" @click="addCart">장바구니 담기</button>
-        <div v-if="this.member.id.startsWith('admin')" class="mt-3 d-flex gap-2">
-          <button class="btn btn-warning" @click="updateItem">상품 수정</button>
-          <button class="btn btn-danger" @click="deleteItem">상품 삭제</button>
+        <div class="">
+          <span v-if="result.discount && result.discount > 0" class="mr-2" style="text-decoration: line-through; color: #b0b0b0;">
+            {{ priceFormat(result.price) }} 
+          </span>
+          <span>
+            {{ priceFormat(result.discount && result.discount > 0 ? Math.round(result.price * (1 - result.discount / 100)) : result.price) }} 
+          </span> 
         </div>
-      </div>
-    </div>
-    <!-- Product Description Tabs -->
-    <div class="row mt-5">
-      <div class="col-12">
-        <ul class="nav nav-tabs" id="descTab" role="tablist">
-          <li class="nav-item" role="presentation">
-            <button
-              class="nav-link active"
-              id="desc-tab"
-              data-bs-toggle="tab"
-              data-bs-target="#desc"
-              type="button"
-              role="tab"
-              aria-controls="desc"
-              aria-selected="true"
-            >
-              상세 설명
-            </button>
-          </li>
-          <li class="nav-item" role="presentation">
-            <button
-              class="nav-link"
-              id="review-tab"
-              data-bs-toggle="tab"
-              data-bs-target="#review"
-              type="button"
-              role="tab"
-              aria-controls="review"
-              aria-selected="false"
-            >
-              리뷰
-            </button>
-          </li>
-        </ul>
-        <div class="tab-content p-3 border border-top-0" id="descTabContent">
-          <div
-            class="tab-pane fade show active"
-            id="desc"
-            role="tabpanel"
-            aria-labelledby="desc-tab"
-          >
-            <p>
-              {{result.content}}
-            </p>
-          </div>
-          <div
-            class="tab-pane fade"
-            id="review"
-            role="tabpanel"
-            aria-labelledby="review-tab"
-          >
-            <p>아직 등록된 리뷰가 없습니다.</p>
-          </div>
+        <v-rating
+          v-model="rating"
+          color="amber"
+          background-color="grey lighten-2"
+          half-increments
+          readonly
+          size="24"
+          class="mb-4"
+        ></v-rating>
+        <div class="mb-3">
+          재고 : {{ result.amount }}
         </div>
-      </div>
-    </div>
-  </div>
+        <div class="mb-4 text-grey">
+          test
+        </div>
+        <div class="d-flex align-center mb-4">
+          <v-btn icon @click="decrement" :disabled="isDisabled.minus">
+            <v-icon>mdi-minus</v-icon>
+          </v-btn>
+          <span class="mx-3 text-h6">{{ input.quantity }}</span>
+          <!-- :disabled="result.amount === 0 ? true : false" -->
+          <v-btn icon @click="increment" :disabled="isDisabled.plus">
+            <v-icon>mdi-plus</v-icon>
+          </v-btn>
+        </div>
+        <v-btn 
+          @click="addCart" 
+          color="success" 
+          variant="outlined" 
+          prepend-icon="mdi-cart" 
+          class="px-8"
+          :disabled="isDisabled.addCart"
+          >{{ isDisabled.addCart ? 'Sold Out' : 'Add to cart' }} 
+        </v-btn>
+      </v-col>
+    </v-row>
+
+    <!-- Tabs for Description and Reviews -->
+    <v-tabs v-model="tab" class="mt-10">
+      <v-tab value="description">Description</v-tab>
+      <v-tab value="reviews">Reviews</v-tab>
+    </v-tabs>
+    <v-window v-model="tab" class="mt-4">
+      <v-window-item value="description">
+        <div>
+          {{ result.content || 'No description available.' }}
+        </div>
+      </v-window-item>
+      <v-window-item value="reviews">
+        <v-divider class="mb-4"></v-divider>
+        <v-row>
+          <v-col cols="12" md="1" class="d-flex justify-center">
+            <v-avatar size="56">
+              <v-icon size="56" color="grey lighten-1">mdi-account</v-icon>
+            </v-avatar>
+          </v-col>
+          <v-col cols="12" md="11">
+            <div class="d-flex align-center">
+              <span class="font-weight-bold mr-2">Jason Smith</span>
+              <span class="text-grey text-caption">{{ reviewDate }}</span>
+              <v-rating
+                v-model="reviewRating"
+                color="amber"
+                background-color="grey lighten-2"
+                half-increments
+                readonly
+                size="20"
+                class="ml-auto"
+              ></v-rating>
+            </div>
+            <div class="text-grey mt-1">
+              The generated Lorem Ipsum is therefore always free from repetition injected humour, or non-characteristic words etc. Susp endisse ultricies nisi vel quam suscipit
+            </div>
+          </v-col>
+        </v-row>
+      </v-window-item>
+    </v-window>
+  </v-container>
 </template>
 
 <style scoped>
-/* 추가적인 스타일이 필요하면 여기에 작성 */
+.text-grey {
+  color: #757575;
+}
 </style>
