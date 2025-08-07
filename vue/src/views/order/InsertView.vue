@@ -127,10 +127,10 @@
       input.imp_uid = "123456789";
       input.orderId = res.data;
       input.list = result.value;
-      // console.log(input);
+      console.log(input);
       order();
   
-      // // 포트원 고객사 식별코드
+      // 포트원 고객사 식별코드
       // IMP.init("imp48621712");
   
       // IMP.request_pay({

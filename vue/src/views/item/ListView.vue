@@ -24,7 +24,7 @@
   });
   const activeTab = ref('all');
   const mainSrc = ref([]);
-  let numbers = [];
+  let numbers = ref(0);
   let params = {};
   
   onMounted(() => {
@@ -48,13 +48,13 @@
       // console.log(result.value);
       // console.log(page.value);
 
-      numbers = [];
+      numbers.value = 0;
 
       for (let i = page.value.startPage; i <= page.value.endPage; i++) {
-        numbers.push(i);
+        numbers.value++;
       }
 
-      // console.log(numbers.length);
+      // console.log(numbers.value);
 
       result.value.forEach((item, idx) => {
         if (item.attachList.length > 0) {
@@ -113,7 +113,7 @@
   };
 
   const pageClick = (pageNum) => {
-    param.value.pageNum = pageNum;
+    param.pageNum = pageNum;
     getList();
   };
 
@@ -230,9 +230,9 @@
     <div class="text-center mt-4">
       <v-pagination
         v-model="param.pageNum"
-        :length="numbers.length"
-        class="my-4"
+        :length="numbers"
         @update:model-value="pageClick"
+        class="my-4"
       ></v-pagination>
     </div>
   </v-container>

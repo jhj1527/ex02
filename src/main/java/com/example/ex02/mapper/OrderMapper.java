@@ -1,8 +1,10 @@
 package com.example.ex02.mapper;
 
 import java.util.List;
+import java.util.Map;
 
 import org.apache.ibatis.annotations.Mapper;
+import org.apache.ibatis.annotations.Param;
 
 import com.example.ex02.dto.OrderDto;
 import com.example.ex02.dto.OrderDto.OrderItemDto;
@@ -13,15 +15,16 @@ public interface OrderMapper {
 	
 	OrderDto getDetailList(String orderId);
 	
-	OrderDto get(String orderId);
-	
 	void insert(OrderDto dto);
 
 	void orderItemInsert(List<OrderItemDto> list);
 
 	void update(OrderDto dto);
 	
-	void delete(String orderId);
+	void updateState(@Param("oino") Long oino, @Param("state") int state);
 	
-	void orderItemDelete(String orderId);
+	OrderItemDto getOrderItemByOino(Long oino);
+
+	void updatePrice(Map<String, Object> map);
+
 }

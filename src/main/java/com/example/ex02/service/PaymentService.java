@@ -6,6 +6,7 @@ import org.json.simple.parser.ParseException;
 import org.springframework.http.ResponseEntity;
 
 import com.example.ex02.dto.OrderDto;
+import com.example.ex02.dto.OrderDto.OrderItemDto;
 import com.fasterxml.jackson.core.JsonProcessingException;
 import com.siot.IamportRestClient.exception.IamportResponseException;
 import com.siot.IamportRestClient.request.CancelData;
@@ -21,8 +22,8 @@ public interface PaymentService {
 	
 	IamportResponse<Payment> cancelPaymentByImpUid(CancelData data) throws IamportResponseException, IOException;
 	
-	Mono<String> paymentByImp_uid(String imp_uid);
+	Mono<String> paymentByImp_uid(String imp_uid) throws JsonProcessingException;
 
-	Mono<String> cancel(OrderDto dto);
+	Mono<String> cancel(OrderItemDto dto);
 	
 }

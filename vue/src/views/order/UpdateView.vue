@@ -1,9 +1,91 @@
+<template>
+  <v-container>
+    <v-dialog v-model="props.isModal" max-width="500px">
+      <v-card>
+        <v-card-title class="text-center">
+          <span class="">배송지 변경</span>
+        </v-card-title>
+
+        <v-card-text>
+          <v-text-field
+            v-model="props.dto.id"
+            label="받는 사람"
+            required
+          ></v-text-field>
+          <v-row>
+            <v-col cols="4">
+              <v-text-field
+              v-model="props.dto.postCode"
+              label="우편번호"
+              readonly
+              ></v-text-field>
+            </v-col>
+            <v-col cols="4">
+              <v-btn block
+                @click="PostCodeApi" 
+                size="large"
+                text="우편번호찾기"
+                ></v-btn>
+            </v-col>
+          </v-row>
+          
+          <v-text-field
+            v-model="props.dto.address1"
+            label="주소"
+            readonly
+          ></v-text-field>
+          <v-row>
+            <v-col cols="6">
+              <v-text-field
+                v-model="props.dto.address2"
+                label="상세주소"
+              ></v-text-field>
+            </v-col>
+            <v-col cols="6">
+              <v-text-field
+                v-model="props.dto.address3"
+                label="참고항목"
+                readonly
+              ></v-text-field>
+            </v-col>
+          </v-row>
+          <v-text-field
+            v-model="props.dto.phone"
+            label="Mobile*"
+            required
+          ></v-text-field>
+          <v-text-field
+            v-model="props.dto.email"
+            label="Email Address*"
+            required
+          ></v-text-field>
+        </v-card-text>
+        
+        <v-card-actions>
+          <v-spacer></v-spacer>
+          <v-btn color="blue-darken-1" variant="text" @click="emits('close')">취소</v-btn>
+          <v-btn color="blue-darken-1" variant="text" @click="update">저장</v-btn>
+        </v-card-actions>
+      </v-card>
+    </v-dialog>
+  </v-container>
+</template>
+
 <script setup>
   import { commonApi } from '@/service/common';
   import { useStore } from '@/stores/store';
   import { storeToRefs } from 'pinia';
   import { defineProps, defineEmits, reactive, ref } from 'vue';
-  
+
+  const dialog = ref(false)
+  const address = ref({
+    recipient: '',
+    phone: '',
+    zipCode: '',
+    address1: '',
+    address2: ''
+  })
+
   const store = useStore();
   const { member } = storeToRefs(store);
   const emits = defineEmits(["close", "update"]);
@@ -16,10 +98,6 @@
       type: Boolean,
       default: false,
     }
-  });
-
-  const input = reactive({
-
   });
 
   const PostCodeApi = () => {
@@ -47,74 +125,3 @@
   };
 
 </script>
-
-<template>
-  <div class="order-update-popup" v-if="isModal">
-    <div class="card">
-      <div class="card-header">배송지 변경</div>
-      <div class="card-body">
-        <div class="mb-3">
-          <label class="form-label">id<span class="text-danger">*</span></label>
-          <input type="text" v-model="props.dto.id" class="form-control" disabled/>
-        </div>
-
-        <div class="mb-3">
-          <label class="form-label">배송지<span class="text-danger">*</span></label>
-          <div class="d-flex mb-2">
-            <input type="text" v-model="props.dto.postCode" class="form-control me-2" style="max-width: 150px;" placeholder="우편번호" />
-            <button type="button" @click="PostCodeApi" class="btn btn-outline-secondary" style="min-width: 120px;">우편번호 찾기</button>
-          </div>
-          <input type="text" v-model="props.dto.address1" class="form-control mb-2" placeholder="도로명주소" />
-          <div class="row mb-3">
-            <div class="col-md-6">
-              <input type="text" v-model="props.dto.address2" class="form-control" placeholder="상세주소" />
-            </div>
-            <div class="col-md-6">
-              <input type="email" v-model="props.dto.address3" class="form-control" placeholder="참고항목" />
-            </div>
-          </div>
-        </div>
-
-        <div class="row mb-3">
-          <div class="col-md-6">
-            <label class="form-label">Phone<span class="text-danger">*</span></label>
-            <input type="text" v-model="props.dto.phone" class="form-control" />
-          </div>
-          <div class="col-md-6">
-            <label class="form-label">Email<span class="text-danger">*</span></label>
-            <input type="email" v-model="props.dto.email" class="form-control" />
-          </div>
-        </div>
-
-        <div class="d-grid gap-2 d-md-flex justify-content-md-end">
-          <button type="button" @click="emits('close')" class="btn btn-primary secondary me-2">닫기</button>
-          <button type="button" @click="update" class="btn btn-success">저장</button>
-        </div>
-      </div>
-    </div>
-  </div>
-</template>
-
-<style scoped>
-.order-update-popup {
-  position: fixed;
-  top: 0;
-  left: 0;
-  width: 100%;
-  height: 100vh;
-  background-color: rgba(0, 0, 0, 0.5);
-  display: flex;
-  justify-content: center;
-  align-items: center;
-}
-
-.card {
-  max-width: 100%;
-  margin: 0 auto;
-}
-
-.card-header {
-  background-color: #f8f9fa;
-  font-weight: bold;
-}
-</style>

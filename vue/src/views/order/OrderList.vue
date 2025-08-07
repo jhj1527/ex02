@@ -20,8 +20,8 @@
     { title: '주문일자', key: 'orderDate' },
     { title: '주문자명', key: 'id' },
     { title: '주문금액', key: 'totalPrice' },
-    { title: '주문상태', key: 'status' },
-    { title: '관리', key: 'actions' }
+    { title: '진행상태', key: 'status' },
+    { title: '접수', key: 'actions' }
   ];
 
   onMounted(() => {
@@ -51,6 +51,9 @@
 
         } else if (item.state === 3) {
           item.state = "배송완료";
+
+        } else if (item.state === 4) {
+          item.state = "주문취소";
         }
         return item;
       });
@@ -65,27 +68,39 @@
 
   const cancel = async (item) => {
     try {
-      param = {};
-      param.imp_uid = item.imp_uid;
-      param.orderPrice = item.orderPrice;
-      param.charge = item.charge;
-      const res = await commonApi("/api/payment/cancel", "post", param);
+      // param = {};
+      // param.orderId = item.orderId;
+      // const res = await commonApi("/api/order/cancel", "delete", param);
+      
+      // if (res.status === 200) {
+      //   alert("cancel");
+      //   result.value.map(item => item.state = '주문취소');
+      //   console.log(result.value);
+      //   // result.value = result.value.filter(i => i.orderId !== item.orderId);
+      // }
+
+      // param = {};
+      // param.imp_uid = item.imp_uid;
+      // param.orderPrice = item.orderPrice;
+      // param.charge = item.charge;
+      // const res = await commonApi("/api/payment/cancel", "post", param);
   
-      console.log(res);
+      // console.log(res);
   
-      if (res.data.response !== null) {
-        param = {};
-        param.orderId = item.orderId;
-        const res = await commonApi("/api/order/delete", "delete", param);
+      // if (res.data.response !== null) {
+      //   param = {};
+      //   param.orderId = item.orderId;
+      //   const res = await commonApi("/api/order/delete", "delete", param);
         
-        if (res.status === 200) {
-          alert("cancel");
-          result.value = result.value.filter(i => i.orderId !== item.orderId);
-        }
+      //   if (res.status === 200) {
+      //     alert("cancel");
+      //     result.value = result.value.map(item => item.state = '주문취소');
+      //     // result.value = result.value.filter(i => i.orderId !== item.orderId);
+      //   }
   
-      } else {
-        alert("이미 취소된 내역");
-      }
+      // } else {
+      //   alert("이미 취소된 내역");
+      // }
       
     } catch (e) {
       console.error(e);
@@ -105,7 +120,7 @@
       '배송준비': 'secondary',
       '배송중': 'primary',
       '배송완료': 'success',
-      '취소': 'error'
+      '주문취소': 'error'
     }
     return statusColors[status] || 'grey'
   }
@@ -174,11 +189,11 @@
               text="주문취소"
             ></v-btn>
             <v-btn
-              v-else
+              v-else-if="item.state === '배송완료'"
               color="warning"
               variant="outlined"
               @click="insertReview(item)"
-              text="리뷰"
+              text="리뷰작성"
             ></v-btn>
           </template>
         </v-data-table>

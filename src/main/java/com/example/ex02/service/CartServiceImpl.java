@@ -114,10 +114,12 @@ public class CartServiceImpl implements CartService {
 			ItemDto itemDto = itemMapper.get(dto.getIno());
 			CartDto cartDto = get(dto);
 			
+			// 상품 재고 - 변경된 카트수량 - 기존 카트 수량이 0보다 큰경우  
 			return itemDto.getAmount() - (dto.getQuantity() - cartDto.getQuantity()) >= 0;
 		}).forEach(dto -> {
 			CartDto cartDto = get(dto);
 			
+			// 변경된 카트수량 - 기존 카트 수량만큼 상품재고 변경  
 			itemMapper.amountUpdate(dto.getIno(), cartDto.getQuantity() - dto.getQuantity());
 		});
 		

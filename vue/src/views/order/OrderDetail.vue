@@ -5,6 +5,7 @@
   import { computed, onMounted, reactive, ref } from 'vue';
   import { useRouter } from 'vue-router';
   import UpdateView from './UpdateView.vue';
+  import dayjs from 'dayjs';
 
   const router = useRouter();
   const store = useStore();
@@ -14,14 +15,7 @@
   });
   const result = ref("");
   let param = {};
-  const total = reactive({
-    totalRealPrice : 0,
-    totalDiscountPrice : 0,
-    point : 0,
-  });
-
   const mainSrc = ref([]);
-  const itemRefs = ref({});
   const modal = reactive({
     isModal : false,
     dto : {},
@@ -40,39 +34,51 @@
   );
 
   const discountPrice = computed(() => 
-    (item) => item.discount > 0 ? (item.price * 100 / (100 - item.discount) - item.price) * item.amount : 0
+    (item) => item.discount > 0 ? (item.price * 100 / (100 - item.discount) - item.price) * item.quantity : 0
   );
+
+  const stateFormat = computed(() => (state) => {
+    if (state === 1) {
+      state = "배송준비";
+
+    } else if (state === 2) {
+      state = "배송중";
+
+    } else if (state === 3) {
+      state = "배송완료";
+
+    } else if (state === 4) {
+      state = "주문취소";
+    }
+    return state;
+  });
+
+  const totalRealPrice = computed(() => {
+    return result.value.list?.reduce((sum, item) => {
+      if (item.discount > 0) {
+        sum += item.price * 100 / (100 - item.discount) * item.quantity;
+
+      } else {
+        sum += (item.price * item.quantity);
+      }
+      return sum;
+    }, 0);
+  });
+
+  const totalDiscountPrice = computed(() => {
+    return totalRealPrice.value - result.value.list?.reduce((sum, item) => sum += (item.price * item.quantity), 0);
+  });
+
+  const point = computed(() => {
+    return result.value.orderPrice * 0.1
+  });
 
   const getDetail = async () => {
     try {
       const res = await commonApi(`/api/order/detailList/${props.orderId}`, "get");
       result.value = res.data;
   
-      // if (result.value.state === 1) {
-      //   result.value.state = "배송준비";
-  
-      // } else if (result.value.state === 2) {
-      //   result.value.state = "배송중";
-  
-      // } else if (result.value.state === 3) {
-      //   result.value.state = "배송완료";
-      // }
-  
-      // console.log(result.value);
-  
-      total.totalRealPrice = result.value.list.reduce((sum, item) => {
-        if (item.discount > 0) {
-          sum += item.price * 100 / (100 - item.discount) * item.amount;
-  
-        } else {
-          sum += (item.price * item.amount);
-        }
-  
-        return sum;
-      }, 0);
-  
-      total.totalDiscountPrice = total.totalRealPrice - result.value.orderPrice;
-      total.point = result.value.orderPrice * 0.1;
+      console.log(result.value);
   
       result.value.list.forEach((item, i) => {
         if (item.attachDto !== null) {
@@ -95,18 +101,49 @@
       // console.log(res.data);
       
       const url = URL.createObjectURL(res.data); // url 생성
-      mainSrc.value.push(url);
-  
-      itemRefs.value[i].src = url;
-      
+      // mainSrc.value.push(url);
+      mainSrc.value[i] = url;
     } catch (e) { 
       console.log(e);
     }
   };
 
-  const setItemRef = async (el, idx) => {
-    if (el) {
-      itemRefs.value[idx] = el;
+  const cancel = async (item) => {
+    try {
+      param = {};
+      
+      const res = await commonApi("/api/order/cancel", "delete", item);
+      if (res.status === 200) {
+        alert("cancel");
+        getDetail();
+      }
+      // param.
+      // const res = await commonApi("/api/payment/cancel", "post", item);
+      // if (res.data.response !== null) {
+      //   param = {};
+      //   param.orderId = item.orderId;
+      //   const res = await commonApi("/api/order/delete", "delete", param);
+        
+      //   if (res.status === 200) {
+      //     alert("cancel");
+      //     result.value = result.value.map(item => item.state = '주문취소');
+      //     // result.value = result.value.filter(i => i.orderId !== item.orderId);
+      //   }
+  
+      // } else {
+      //   alert("이미 취소된 내역");
+      // }
+      
+    } catch (e) {
+      console.error(e);
+    }
+  };
+
+  const insertReview = async (item) => {
+    try {
+      
+    } catch (e) {
+      console.error(e);
     }
   };
 
@@ -125,121 +162,171 @@
     modal.isModal = true;
   };
 
+  const getStatusColor = (status) => {
+    const statusColors = {
+      '배송준비': 'secondary',
+      '배송중': 'primary',
+      '배송완료': 'success',
+      '주문취소': 'error'
+    }
+    return statusColors[status] || 'grey'
+  }
+
 </script>
 
 <template>
-  <div class="container my-5">
+  <v-container class="my-5">
     <!-- 주문 상품 -->
-    <h5 class="fw-bold mb-3">주문 상품</h5>
-    <table class="table align-middle">
-      <thead>
-        <tr>
-          <th style="width: 120px;"></th>
-          <th>상품명</th>
-          <th>수량</th>
-          <th>상품금액</th>
-          <th>할인금액</th>
-          <th>총금액</th>
-        </tr>
-      </thead>
-      <tbody>
-        <tr v-for="(item, idx) in result.list" :key="item.oino" >
-          <td>
-            <!-- :src="`http://localhost:8081/api/file/getFile?filePath=${item.attachDto.filePath}&fileName=${item.attachDto.fileName}`" -->
-            <img 
-              v-if="item.attachDto !== null"
-              :src="mainSrc"
-              :ref="el => setItemRef(el, idx)"
-              class="img-thumbnail" 
-              alt="">
-            <img v-else src="../../assets/image/golden-retriever-puppy-amber-9661916_640.jpg" class="img-thumbnail" alt="상품1">
-          </td>
-          <td>{{ item.name }}</td>
-          <td>{{ item.amount }}</td>
-          <td>{{ priceFormat(realPrice(item)) }}</td>
-          <td>{{ priceFormat(discountPrice(item))}}</td>
-          <td>{{ priceFormat(item.price * item.amount) }}</td>
-        </tr>
-      </tbody>
-    </table>
+    <v-card>
+      <v-card-title class="text-h5 font-weight-bold">주문 상품</v-card-title>
+      <v-table>
+        <thead>
+          <tr>
+            <th></th>
+            <th>상품명</th>
+            <th>수량</th>
+            <th>상품금액</th>
+            <th>할인금액</th>
+            <th>총금액</th>
+            <th>진행상태</th>
+            <th>접수</th>
+          </tr>
+        </thead>
+        <tbody>
+          <tr v-for="(item, i) in result.list" :key="item.oino">
+            <td width="120">
+              <v-img
+                v-if="item.attachDto !== null"
+                :src="mainSrc[i]"
+                :max-width="120"
+                :max-height="120"
+                cover
+              ></v-img>
+              <v-img v-else src="../../assets/image/golden-retriever-puppy-amber-9661916_640.jpg" max-width="150" cover></v-img>
+            </td>
+            <td>{{ item.name }}</td>
+            <td>{{ item.quantity }}</td>
+            <td>{{ priceFormat(realPrice(item)) }}</td>
+            <td>{{ priceFormat(discountPrice(item))}}</td>
+            <td>{{ priceFormat(item.price * item.quantity) }}</td>
+            <td>
+              <v-chip
+                :color="getStatusColor(stateFormat(item.state))"
+                variant="outlined"
+                class="font-weight-bold"
+              >
+                {{ stateFormat(item.state) }}
+              </v-chip>
+            </td>
+            <td>
+              <v-btn
+                v-if="item.state === 1 || item.state === 2"
+                color="error"
+                variant="outlined"
+                @click="cancel(item)"
+                text="주문취소"
+                ></v-btn>
+              <v-btn
+                v-else-if="item.state === 3"
+                color="warning"
+                variant="outlined"
+                @click="insertReview(item)"
+                text="리뷰작성"
+              ></v-btn>
+            </td>
+          </tr>
+        </tbody>
+      </v-table>
 
-    <div class="row mt-4">
-      <!-- 주문자 정보 -->
-      <div class="col-md-6">
-        <h6 class="fw-bold mb-3">주문자 정보</h6>
-        <table class="table table-border">
-          <tbody>
-            <tr>
-              <td class="text-secondary">주문번호</td>
-              <td class="text-end">{{ result.orderId }}</td>
-            </tr>
-            <tr>
-              <td class="text-secondary">주문일</td>
-              <td class="text-end">{{ result.regDate }}</td>
-            </tr>
-            <tr>
-              <td class="text-secondary">이름</td>
-              <td class="text-end">{{ result.id }}</td>
-            </tr>
-            <tr>
-              <td class="text-secondary">휴대폰번호</td>
-              <td class="text-end">{{ result.phone }}</td>
-            </tr>
-            <tr>
-              <td class="text-secondary">이메일</td>
-              <td class="text-end">{{ result.email }}</td>
-            </tr>
-          </tbody>
-        </table>
-      </div>
-      <!-- 결제 정보 -->
-      <div class="col-md-6">
-        <h6 class="fw-bold mb-3">결제 정보</h6>
-        <table class="table table-border">
-          <tbody>
-            <tr>
-              <td class="text-secondary">상품금액</td>
-              <td class="text-end">{{ priceFormat(total.totalRealPrice) }}</td>
-            </tr>
-            <tr>
-              <td class="text-secondary">할인 금액</td>
-              <td class="text-end text-danger">{{ priceFormat(total.totalDiscountPrice) }}</td>
-            </tr>
-            <tr>
-              <td class="text-secondary">적립예정 포인트</td>
-              <td class="text-end">{{ total.point }}P</td>
-            </tr>
-            <tr>
-              <td class="text-secondary">배송비</td>
-              <td class="text-end">{{ priceFormat(result.charge) }}</td>
-            </tr>
-            <tr>
-              <td class="fw-bold">총 결제 금액</td>
-              <td class="text-end fw-bold text-danger">{{ priceFormat(result.orderPrice + result.charge) }}</td>
-            </tr>
-          </tbody>
-        </table>
-      </div>
-    </div>
+      <v-row class="mt-4">
+        <!-- 주문자 정보 -->
+        <v-col cols="12" md="6">
+          <v-card>
+            <v-card-title class="text-h6 font-weight-bold">주문자 정보</v-card-title>
+            <v-table density="compact">
+              <tbody>
+                <tr>
+                  <td class="text-grey">주문번호</td>
+                  <td class="text-right">{{ result.orderId }}</td>
+                </tr>
+                <tr>
+                  <td class="text-grey">주문일</td>
+                  <td class="text-right">{{ dayjs(result.regDate).format('YYYY-MM-DD HH:mm:ss') }}</td>
+                </tr>
+                <tr>
+                  <td class="text-grey">이름</td>
+                  <td class="text-right">{{ result.id }}</td>
+                </tr>
+                <tr>
+                  <td class="text-grey">휴대폰번호</td>
+                  <td class="text-right">{{ result.phone }}</td>
+                </tr>
+                <tr>
+                  <td class="text-grey">이메일</td>
+                  <td class="text-right">{{ result.email }}</td>
+                </tr>
+              </tbody>
+            </v-table>
+          </v-card>
+        </v-col>
 
-    <div class="row mt-4">
-      <!-- 배송지 정보 -->
-      <div class="col-md-6">
-        <h6 class="fw-bold mb-3">배송지 정보</h6>
-        <div class="border rounded p-3">
-          <div>{{ result.id }}</div>
-          <div>{{ result.phone }}</div>
-          <div>{{ result.postCode }} {{ result.address1 }} {{ result.address2 }} {{ result.address3 }}</div>
-          <button @click="popup" class="btn btn-danger btn-sm mt-2">배송지 변경</button>
-        </div>
-      </div>
-    </div>
+        <!-- 결제 정보 -->
+        <v-col cols="12" md="6">
+          <v-card>
+            <v-card-title class="text-h6 font-weight-bold">결제 정보</v-card-title>
+            <v-table density="compact">
+              <tbody>
+                <tr>
+                  <td class="text-grey">상품금액</td>
+                  <td class="text-right">{{ priceFormat(totalRealPrice) }}</td>
+                </tr>
+                <tr>
+                  <td class="text-grey">할인 금액</td>
+                  <td class="text-right">{{ priceFormat(totalDiscountPrice) }}</td>
+                </tr>
+                <tr>
+                  <td class="text-grey">적립예정 포인트</td>
+                  <td class="text-right">{{ point }}P</td>
+                </tr>
+                <tr>
+                  <td class="text-grey">배송비</td>
+                  <td class="text-right">{{ priceFormat(result.charge) }}</td>
+                </tr>
+                <tr v-if="result.cancelPrice > 0">
+                  <td class="text-grey">취소금액</td>
+                  <td class="text-right text-red">{{ priceFormat(result.cancelPrice) }}</td>
+                </tr>
+                <tr v-if="result.orderPrice + result.charge > 0">
+                  <td class="font-weight-bold">총 결제 금액</td>
+                  <td class="text-right font-weight-bold text-red">{{ priceFormat(result.orderPrice + result.charge) }}</td>
+                </tr>
+              </tbody>
+            </v-table>
+          </v-card>
+        </v-col>
+      </v-row>
 
-    <div class="d-flex justify-content-center gap-2 mt-4">
-      <button class="btn btn-outline-secondary" @click="router.push('/order/list')">주문목록 보기</button>
-      <button class="btn btn-danger" @click="router.push('/item/list')">계속 쇼핑하기</button>
-    </div>
-  </div>
+      <v-row class="mt-4">
+        <!-- 배송지 정보 -->
+        <v-col cols="12" md="6">
+          <v-card>
+            <v-card-title class="text-h6 font-weight-bold">배송지 정보</v-card-title>
+            <v-card-text>
+              <div>{{ result.id }}</div>
+              <div>{{ result.phone }}</div>
+              <div>{{ result.postCode }} {{ result.address1 }} {{ result.address2 }} {{ result.address3 }}</div>
+              <v-btn color="warning" variant="outlined" class="mt-2" @click="popup">배송지 변경</v-btn>
+            </v-card-text>
+          </v-card>
+        </v-col>
+      </v-row>
 
-  <UpdateView :isModal="modal.isModal" :dto="modal.dto" @close="close()" @update="update()"/>
+      <v-row class="mb-4 mt-4 justify-center">
+        <v-btn variant="outlined" class="mx-2" @click="router.push('/order/list')">주문목록 보기</v-btn>
+        <v-btn variant="outlined" color="error" @click="router.push('/item/list')">계속 쇼핑하기</v-btn>
+      </v-row>
+    </v-card>
+
+    <UpdateView :isModal="modal.isModal" :dto="modal.dto" @close="close()" @update="update()"/>
+  </v-container>
 </template>

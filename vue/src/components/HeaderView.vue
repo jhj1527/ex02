@@ -55,8 +55,8 @@
     </v-app-bar>
 
     <v-navigation-drawer v-model="drawer" app>
-      <v-list v-if="member.id !== null && member.id.startsWith('admin')">
-        <v-list-item link to="/">test</v-list-item>
+      <v-list v-if="member.id !== null && member.role.endsWith('ADMIN')">
+        <v-list-item link to="/admin">test</v-list-item>
       </v-list>
       <v-list v-else>
         <v-list-item link to="/">home</v-list-item>

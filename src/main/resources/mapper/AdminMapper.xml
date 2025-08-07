@@ -1,0 +1,89 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE mapper PUBLIC "-//mybatis.org//DTD Mapper 3.0//EN" "http://mybatis.org/dtd/mybatis-3-mapper.dtd">
+
+<mapper namespace="com.example.ex02.mapper.AdminMapper">
+    
+    <!-- <select id="chartList1" resultType="com.example.ex02.dto.AttachDto">
+		최근 6개월 판매량
+		<![CDATA[
+            with 
+			a AS (
+				select 
+			  	to_char(updateDate, 'YYYY-MM-DD') as updateDate, 
+			  	count(*) as count,
+			  	nvl(sum(price * quantity), 0) as sumPrice, 
+			  	nvl(avg(price * quantity), 0) as avgPrice
+			  	from orderdetail
+			  	where 1 = 1
+				and state in(1,2,3,4)
+				and updateDate between add_months(sysdate, -5) and sysdate
+			  	group by to_char(updateDate, 'YYYY-MM-DD')
+			),
+			b AS (
+				select to_date(to_char(sysdate + 1 - level, 'YYYY-MM-DD'), 'YYYY-MM-DD') as three_m
+				from dual connect by level < sysdate - add_months(sysdate, -5) + 1
+				order by three_m
+			) 
+			
+			select 
+			to_char(three_m, 'MM') as month, 
+			nvl(sum(a.count), 0) as count, 
+			nvl(sum(a.sumPrice), 0) as sumPrice, 
+			trunc(nvl(avg(a.avgPrice), 0), 0) as avgPrice
+			from a
+			right outer join b on a.updateDate = b.three_m
+			group by to_char(b.three_m, 'MM')
+			order by to_char(b.three_m, 'MM')
+        ]]>
+	</select> -->
+	
+	<!-- <select id="chartList2" resultType="com.example.ex02.dto.AttachDto">
+		당월 카테고리별 판매량
+		<![CDATA[
+			select 
+			to_date(to_char(three_m, 'YYYY-MM'), 'YYYY-MM') as month,
+			a.category as category,
+			nvl(sum(a.cnt), 0) as count, 
+			nvl(round(ratio_to_report(sum(a.cnt)) over() * 100, 1), 0) as percent
+			from (
+				select 
+			  	to_char(d.updateDate, 'YYYY-MM-DD') as updateDate,
+			  	i.category,
+			  	count(*) as cnt,
+			  	round(ratio_to_report(sum(i.cnt)) over() * 100, 1) as percent
+			  	from (	
+			  		select ino, category AS category, count(*) AS cnt
+					from item
+					group by ino, category
+				) i, orderdetail d
+				where 1 = 1
+				and i.ino = d.ino
+				and d.state in(1,4)
+				and d.updateDate between TRUNC(SYSDATE, 'MM') and sysdate
+			  	group by to_char(d.updateDate, 'YYYY-MM-DD'), i.category
+			) a
+			right outer join (
+				select to_date(to_char(sysdate + 1 - level, 'YYYY-MM-DD'), 'YYYY-MM-DD') as three_m
+				from dual connect by level < sysdate - TRUNC(SYSDATE, 'MM') + 1
+				order by three_m
+			) b on b.three_m = a.updateDate
+			where 1 = 1 
+			group BY to_date(to_char(b.three_m, 'YYYY-MM'), 'YYYY-MM'), a.category
+			order a.category
+        ]]>
+	</select> -->
+	
+	<!-- <select id="memberList" resultType="com.example.ex02.dto.AttachDto">
+		<![CDATA[
+			SELECT 
+				m.id, m.regdate, m.point,
+				(SELECT count(*) FROM board WHERE id = m.id) AS boradCnt,
+				(SELECT count(*) FROM reply WHERE id = m.id) AS replyCnt,
+				(SELECT count(*) FROM orderdetail WHERE id = m.id) AS orderCnt
+			FROM MEMBER m
+			WHERE 1 = 1
+			AND NOT m.role = (upper('admin'))
+        ]]>
+	</select> -->
+	
+</mapper>

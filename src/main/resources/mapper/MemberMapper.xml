@@ -20,9 +20,20 @@
     </select>
 	
 	<insert id="insert">
-		<![CDATA[
-			insert into member(id, password) values(#{id}, #{password})
-        ]]>
+		<choose>
+			<when test="role != null and role.equals('ADMIN')">
+				<![CDATA[
+					insert into member(id, password, role) 
+					values(#{id}, #{password}, #{role})
+		        ]]>
+			</when>
+			<otherwise>
+				<![CDATA[
+					insert into member(id, password) 
+					values(#{id}, #{password})
+		        ]]>
+			</otherwise>
+		</choose>
 	</insert>
 	
 </mapper>

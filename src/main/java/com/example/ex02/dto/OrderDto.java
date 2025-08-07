@@ -26,6 +26,7 @@ public class OrderDto {
 	private int orderPrice;
 	private int charge;
 	private int state;
+	private int cancelPrice;
 	private LocalDateTime regDate;
 	private List<OrderItemDto> list;
 	
@@ -42,6 +43,10 @@ public class OrderDto {
 		private int quantity;
 		private int price;
 		private int discount;
+		private int state;
+		private String imp_uid;
+		private LocalDateTime regDate;
+		private LocalDateTime updateDate;
 		private AttachDto attachDto;
 	}
 }

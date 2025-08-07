@@ -65,9 +65,9 @@ public class OrderController {
 		return ResponseEntity.status(HttpStatus.OK).body("update");
 	}
 	
-	@DeleteMapping("/delete")
-	public ResponseEntity<?> delete(@RequestParam("orderId") String orderId) {
-		orderService.delete(orderId);
+	@DeleteMapping("/cancel")
+	public ResponseEntity<?> delete(@RequestParam("oino") Long oino) {
+		orderService.cancel(oino);
 		
 		return ResponseEntity.status(HttpStatus.OK).body("delete");
 	}
