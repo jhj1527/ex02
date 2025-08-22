@@ -78,6 +78,11 @@ public class ItemServiceImpl implements ItemService {
 	}
 	
 	@Override
+	public List<ItemDto> list() {
+		return itemMapper.list();
+	}
+	
+	@Override
 	public ItemDto get(Long ino) {
 		ItemDto dto = itemMapper.get(ino);
 		

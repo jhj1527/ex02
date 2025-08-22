@@ -1,3 +1,58 @@
+<script setup>
+  import { commonApi } from '@/service/common';
+  import { useStore } from '@/stores/store';
+  import { storeToRefs } from 'pinia';
+  import { defineProps, defineEmits, reactive, ref } from 'vue';
+
+  const dialog = ref(false)
+  const address = ref({
+    recipient: '',
+    phone: '',
+    zipCode: '',
+    address1: '',
+    address2: ''
+  })
+
+  const store = useStore();
+  const { member } = storeToRefs(store);
+  const emits = defineEmits(["close", "update"]);
+  const props = defineProps({
+    dto: {
+      type: Object,
+      default: () => ({}),
+    },
+    isModal: {
+      type: Boolean,
+      default: false,
+    }
+  });
+
+  const PostCodeApi = () => {
+    store.PostCodeApi(props.dto);
+  };
+
+  const update = async () => {
+    try {
+      console.log(props.dto);
+      // let param = {};
+      
+      const res = await commonApi("/api/order/update", "patch", props.dto);
+      
+      if (res.status === 200) {
+        alert("update");
+        emits("update");
+
+      } else {
+        alert("error");
+      }
+      
+    } catch (e) {
+      console.error(e);
+    }
+  };
+
+</script>
+
 <template>
   <v-container>
     <v-dialog v-model="props.isModal" max-width="500px">
@@ -70,58 +125,3 @@
     </v-dialog>
   </v-container>
 </template>
-
-<script setup>
-  import { commonApi } from '@/service/common';
-  import { useStore } from '@/stores/store';
-  import { storeToRefs } from 'pinia';
-  import { defineProps, defineEmits, reactive, ref } from 'vue';
-
-  const dialog = ref(false)
-  const address = ref({
-    recipient: '',
-    phone: '',
-    zipCode: '',
-    address1: '',
-    address2: ''
-  })
-
-  const store = useStore();
-  const { member } = storeToRefs(store);
-  const emits = defineEmits(["close", "update"]);
-  const props = defineProps({
-    dto: {
-      type: Object,
-      default: () => ({}),
-    },
-    isModal: {
-      type: Boolean,
-      default: false,
-    }
-  });
-
-  const PostCodeApi = () => {
-    store.PostCodeApi(props.dto);
-  };
-
-  const update = async () => {
-    try {
-      console.log(props.dto);
-      // let param = {};
-      
-      const res = await commonApi("/api/order/update", "patch", props.dto);
-      
-      if (res.status === 200) {
-        alert("update");
-        emits("update");
-
-      } else {
-        alert("error");
-      }
-      
-    } catch (e) {
-      console.error(e);
-    }
-  };
-
-</script>

@@ -8,6 +8,7 @@ import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
 import org.springframework.security.core.Authentication;
+import org.springframework.security.crypto.password.PasswordEncoder;
 import org.springframework.validation.BindingResult;
 import org.springframework.validation.ObjectError;
 import org.springframework.validation.annotation.Validated;
@@ -33,11 +34,13 @@ import lombok.extern.slf4j.Slf4j;
 public class MemberController {
 	private final MemberService memberService;
 	private final MemberValidator memberValidator;
+	private final PasswordEncoder passwordEncoder;
 	
 	@Autowired
-	public MemberController(MemberService memberService, MemberValidator memberValidator) {
+	public MemberController(MemberService memberService, MemberValidator memberValidator, PasswordEncoder passwordEncoder) {
 		this.memberService = memberService;
 		this.memberValidator = memberValidator;
+		this.passwordEncoder = passwordEncoder;
 	}
 	
 	@GetMapping("/get")
@@ -82,15 +85,14 @@ public class MemberController {
 				throw new ApiException(ErrorCode.MEMBER_REQUIRED, meaasge);
 			}
 			
+			// 비밀번호 암호화
+			dto.setPassword(passwordEncoder.encode(dto.getPassword()));
+			
 			insert = memberService.insert(dto);
 			return ResponseEntity.status(HttpStatus.OK).body(insert);
 			
 		} catch (ApiException e) {
-//			ErrorDto resultDto = ErrorDto.builder()
-//					.type(e.getError().getType())
-//					.code(e.getError().getCode())
-//					.message(e.getMessage())
-//					.build();
+
 			
 			log.error("error!!!!!!!!!!!!!!!!!!!");
 			map.put("message", e.getMessage());

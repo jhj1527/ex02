@@ -36,12 +36,12 @@
       }
 
       instance.defaults.paramsSerializer = (param) => {
-          const params = new URLSearchParams();
-          for (const key in param) {
-              params.append(key, param[key]);
-          }
+        const params = new URLSearchParams();
+        for (const key in param) {
+            params.append(key, param[key]);
+        }
 
-          return params.toString();
+        return params.toString();
       }
       
       switch (type.toUpperCase()) {

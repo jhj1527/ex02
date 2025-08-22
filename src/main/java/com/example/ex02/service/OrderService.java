@@ -16,5 +16,7 @@ public interface OrderService {
 
 	void update(OrderDto dto);
 	
+	void updateState(Long oino, int state);
+	
 	String craeteNum(int range);
 }

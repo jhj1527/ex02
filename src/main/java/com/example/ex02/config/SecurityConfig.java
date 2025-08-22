@@ -1,12 +1,15 @@
 package com.example.ex02.config;
 
 import java.io.IOException;
+import java.time.LocalDate;
+import java.time.format.DateTimeFormatter;
 import java.util.Arrays;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
 import java.util.stream.Collectors;
 
+import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.context.annotation.Bean;
 import org.springframework.context.annotation.Configuration;
 import org.springframework.http.HttpMethod;
@@ -40,6 +43,7 @@ import org.springframework.web.cors.CorsConfigurationSource;
 import org.springframework.web.cors.UrlBasedCorsConfigurationSource;
 
 import com.example.ex02.security.CustomUserDetailService;
+import com.example.ex02.service.MemberService;
 import com.fasterxml.jackson.core.JsonProcessingException;
 import com.fasterxml.jackson.databind.ObjectMapper;
 
@@ -52,6 +56,13 @@ import lombok.extern.slf4j.Slf4j;
 @Configuration
 @EnableWebSecurity
 public class SecurityConfig {
+	private final MemberService memberService;
+	
+	@Autowired
+	public SecurityConfig(MemberService memberService) {
+		this.memberService = memberService;
+	}
+
 	@Bean
 	public WebSecurityCustomizer configure() {
 		return web -> web.ignoring()
@@ -59,18 +70,18 @@ public class SecurityConfig {
 	}
 	
 	@Bean
-    public CorsConfigurationSource corsConfigurationSource() {
-        CorsConfiguration configuration = new CorsConfiguration();
-        configuration.setAllowedOriginPatterns(List.of("http://localhost:5173")); 
-        configuration.setAllowedMethods(List.of("GET", "POST", "PUT", "PATCH", "DELETE")); 
-        configuration.setAllowedHeaders(Arrays.asList("Authorization", "Authorization-refresh", "Cache-Control", "Content-Type"));
-        configuration.setAllowCredentials(true);
-//        configuration.setMaxAge(3600L);
-        
-        UrlBasedCorsConfigurationSource source = new UrlBasedCorsConfigurationSource();
-        source.registerCorsConfiguration("/api/**", configuration);
-        return source;
-    }
+	public CorsConfigurationSource corsConfigurationSource() {
+		CorsConfiguration configuration = new CorsConfiguration();
+		configuration.setAllowedOriginPatterns(List.of("http://localhost:5173"));
+		configuration.setAllowedMethods(List.of("GET", "POST", "PUT", "PATCH", "DELETE"));
+		configuration.setAllowedHeaders(Arrays.asList("Authorization", "Authorization-refresh", "Cache-Control", "Content-Type"));
+		configuration.setAllowCredentials(true);
+//		configuration.setMaxAge(3600L);
+
+		UrlBasedCorsConfigurationSource source = new UrlBasedCorsConfigurationSource();
+		source.registerCorsConfiguration("/api/**", configuration);
+		return source;
+	}
 
 	@Bean
 	public PasswordEncoder passwordEncoder() {
@@ -96,7 +107,7 @@ public class SecurityConfig {
 				.permitAll()
 				.requestMatchers("/api/board/**", "/api/member/**", "/api/reply/**"
 						, "/api/file/**", "/api/item/**", "/api/cart/**", "/api/order/**"
-						, "/api/payment/**")
+						, "/api/payment/**", "/api/admin/**")
 				.permitAll()
 				.anyRequest()
 				.authenticated()
@@ -214,11 +225,27 @@ public class SecurityConfig {
 				
 				String id = authentication.getName();
 				String sessionId = web.getSessionId();
-				List<String> role = authentication.getAuthorities()
+				String role = authentication.getAuthorities()
 						.stream()
 						.map(GrantedAuthority::getAuthority)
-						.collect(Collectors.toList());
-
+						.collect(Collectors.joining());
+				
+				role = role.substring(role.indexOf("_") + 1, role.length());
+				
+				LocalDate today = LocalDate.now();
+//				String formatDate = today.format(formatter);
+				
+				if (!role.equals("ADMIN")) {
+					int cnt = memberService.getVisit(today);
+					
+					if (cnt == 0) {
+						memberService.insertVisit(today);
+						
+					} else {
+						memberService.updateVisit(today);
+					}
+				}
+				
 				map.put("id", id);
 				map.put("sessionId", sessionId);
 				map.put("role", role);

@@ -16,6 +16,7 @@ import org.springframework.web.bind.annotation.RequestParam;
 import org.springframework.web.bind.annotation.RestController;
 
 import com.example.ex02.dto.OrderDto;
+import com.example.ex02.dto.OrderDto.OrderItemDto;
 import com.example.ex02.service.OrderService;
 
 import lombok.extern.slf4j.Slf4j;
@@ -52,7 +53,7 @@ public class OrderController {
 	}
 
 	@PostMapping("/insert")
-	public ResponseEntity<?> OrderIsert(@RequestBody OrderDto dto) {
+	public ResponseEntity<?> OrderInsert(@RequestBody OrderDto dto) {
 		orderService.insert(dto);
 		
 		return ResponseEntity.status(HttpStatus.CREATED).body("insert");
@@ -61,6 +62,15 @@ public class OrderController {
 	@PatchMapping("/update")
 	public ResponseEntity<?> update(@RequestBody OrderDto dto) {
 		orderService.update(dto);
+		
+		return ResponseEntity.status(HttpStatus.OK).body("update");
+	}
+	
+	@PatchMapping("/updateState")
+	public ResponseEntity<?> updateState(@RequestBody OrderItemDto dto) {
+		if (dto.getState() == 1 || dto.getState() == 2) {
+			orderService.updateState(dto.getOino(), dto.getState() + 1);
+		}
 		
 		return ResponseEntity.status(HttpStatus.OK).body("update");
 	}

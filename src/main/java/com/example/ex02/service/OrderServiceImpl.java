@@ -102,7 +102,7 @@ public class OrderServiceImpl implements OrderService {
 			map.put("charge", 0);
 		}
 		
-		orderMapper.updateState(oino, 4);
+		updateState(oino, 4);
 		
 		orderMapper.updatePrice(map);
 	}
@@ -125,5 +125,11 @@ public class OrderServiceImpl implements OrderService {
         log.info("orderId : " + stringBuilder.toString());
 
         return stringBuilder.toString();
+	}
+	
+	@Transactional
+	@Override
+	public void updateState(Long oino, int state) {
+		orderMapper.updateState(oino, state);
 	}
 }

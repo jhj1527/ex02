@@ -12,6 +12,8 @@ import com.example.ex02.util.CriteriaDto;
 public interface ItemMapper {
 	List<ItemDto> getList(CriteriaDto dto);
 	
+	List<ItemDto> list();
+	
 	ItemDto get(Long ino);
 
 	int getCount(CriteriaDto dto);

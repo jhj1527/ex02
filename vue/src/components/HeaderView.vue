@@ -19,7 +19,7 @@
   );
 
   const cnt = computed(() => {
-    return cart.value.count > 0 ? cart.value.count : "";
+    return cart.value.count > 0 ? cart.value.count : '';
   });
 
   const logout = async () => {
@@ -43,26 +43,45 @@
       <v-app-bar-nav-icon @click="drawer = !drawer"></v-app-bar-nav-icon>
       <v-toolbar-title>app</v-toolbar-title>
       <template v-slot:append>
-        <v-btn v-if="member.id !== null" icon="mdi-account-check" @click="logout"></v-btn>
-        <v-btn v-else icon="mdi-account" to="/member/login"></v-btn>
-        <v-btn v-if="member.id === null" icon="mdi-account-plus" to="/member/insert"></v-btn>
-        <!-- <v-btn left icon="mdi-cart" to="/cart/list"></v-btn> -->
-        <v-btn to="/cart/list">
-          <v-icon left>mdi-cart</v-icon>
-          <span>{{ cnt }}</span>
+        <v-btn v-if="member.id !== null" @click="logout" stacked>
+          <v-badge color="success" dot>
+            <v-icon>mdi-account-check</v-icon>
+          </v-badge>
         </v-btn>
-     </template>
+
+        <v-btn v-else to="/member/login" stacked>
+          <v-badge color="success" dot>
+            <v-icon>mdi-account</v-icon>
+          </v-badge>
+        </v-btn>
+
+        <v-btn v-if="member.id === null" to="/member/insert" stacked>
+          <v-badge color="warning" dot>
+            <v-icon>mdi-account-plus</v-icon>
+          </v-badge>
+        </v-btn>
+
+        <!-- <v-btn left icon="mdi-cart" to="/cart/list"></v-btn> -->
+        <v-btn v-if="cnt === ''" to="/cart/list" stacked>
+            <v-icon>mdi-cart</v-icon>
+        </v-btn>
+        <v-btn v-else to="/cart/list" stacked>
+          <v-badge color="primary" :content="cnt">
+            <v-icon>mdi-cart</v-icon>
+          </v-badge>
+        </v-btn>
+      </template>
     </v-app-bar>
 
     <v-navigation-drawer v-model="drawer" app>
-      <v-list v-if="member.id !== null && member.role.endsWith('ADMIN')">
-        <v-list-item link to="/admin">test</v-list-item>
+      <v-list v-if="member.id !== null && member.role.startsWith('ADMIN')">
+        <v-list-item link to="/admin/dashBoard">dashBoard</v-list-item>
+        <v-list-item link to="/admin/item">insert</v-list-item>
       </v-list>
       <v-list v-else>
         <v-list-item link to="/">home</v-list-item>
         <v-list-item link to="/board/list">board</v-list-item>
         <v-list-item link to="/item/list">item</v-list-item>
-        <v-list-item link to="/item/insert">상품등록</v-list-item>
         <v-list-item link to="/order/list">order</v-list-item>
       </v-list>
     </v-navigation-drawer>

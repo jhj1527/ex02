@@ -26,7 +26,7 @@
       if (result.value.status === 200) {
         member.value.id = result.value.data.id;
         member.value.sessionId = result.value.data.sessionId;
-        member.value.role = result.value.data.role[0];
+        member.value.role = result.value.data.role;
       
         localStorage.setItem("id" , member.value.id);
         localStorage.setItem("sessionId" , member.value.sessionId);
