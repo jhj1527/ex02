@@ -1,25 +1,29 @@
 <script setup>
   import { commonApi } from '@/service/common';
   import { reactive, ref, defineEmits } from 'vue';
-  
+  import { useRouter } from 'vue-router';
+
+  const router = useRouter();
   const input = reactive({
     id : "",
     password : "",
   });
   const result = ref("");
-  const emit = defineEmits(["popup"]);
+  // const emit = defineEmits(["popup"]);
   
   const insert = async () => {
     try {
-      if (input.title === "" && input.content === "") {
+      if (input.id === "" && input.password === "") {
         alert("error");
         return;
       }
-      
+      debugger;
       result.value = await commonApi("/api/member/insert", "POST", input);
 
       if (result.value.status === 200) {
-        emit("popup", result.value, "insert");
+        // emit("popup", result.value, "insert");
+        alert("insert");
+        router.push("/member/login");
 
       } else {
         alert(result.value.data.message);

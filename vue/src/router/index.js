@@ -106,9 +106,15 @@ const router = createRouter({
       props : true,
     },
     {
-      path: "/admin",
-      name: "admin",
-      component: () => import('../views/admin/AdminView.vue'),
+      path: "/admin/dashBoard",
+      name: "dashBoard",
+      component: () => import('../views/admin/DashBoardView.vue'),
+      props : true,
+    },
+    {
+      path: "/admin/item",
+      name: "adminItem",
+      component: () => import('../views/admin/ItemView.vue'),
       props : true,
     },
   ],

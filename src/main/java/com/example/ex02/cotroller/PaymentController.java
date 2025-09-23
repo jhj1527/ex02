@@ -28,6 +28,7 @@ import org.springframework.web.bind.annotation.RestController;
 import org.springframework.web.reactive.function.server.ServerRequest;
 
 import com.example.ex02.dto.OrderDto;
+import com.example.ex02.dto.OrderDto.OrderItemDto;
 import com.example.ex02.exception.ApiException;
 import com.example.ex02.service.PaymentService;
 import com.fasterxml.jackson.core.JsonProcessingException;
@@ -89,7 +90,7 @@ public class PaymentController {
 	}
 	
 	@PostMapping("/cancel")
-	public Mono<String> cancel(@RequestBody OrderDto dto) throws JsonProcessingException  {
+	public Mono<String> cancel(@RequestBody OrderItemDto dto) throws JsonProcessingException  {
 		try {
 			Mono<String> delete = paymentService.cancel(dto);
 			
@@ -99,6 +100,8 @@ public class PaymentController {
 			log.error("getMessage!!!!!!!!!!!!! : " + e.getMessage());
 			Map <String, Object> map = new HashMap<>();
 			map.put("message", e.getMessage());
+			map.put("status", e.getError().getType());
+			map.put("code", e.getError().getCode());
 			
 			return Mono.just(new ObjectMapper().writeValueAsString(map));
 		}

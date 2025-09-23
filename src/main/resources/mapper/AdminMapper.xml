@@ -1,0 +1,181 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE mapper PUBLIC "-//mybatis.org//DTD Mapper 3.0//EN" "http://mybatis.org/dtd/mybatis-3-mapper.dtd">
+
+<mapper namespace="com.example.ex02.mapper.AdminMapper">
+    
+	<!-- 최근 6개월 판매량 -->
+    <select id="barChartList" resultType="com.example.ex02.dto.BarChartDto">
+		<![CDATA[
+            with 
+			a AS (
+				select 
+				  	to_char(updateDate, 'YYYY-MM-DD') as updateDate, 
+				  	count(*) as count,
+				  	nvl(sum(price * quantity), 0) as sumPrice, 
+				  	nvl(avg(price * quantity), 0) as avgPrice
+			  	from orderdetail
+			  	where 1 = 1
+				and state not in(1, 2, 3)
+				and updateDate between add_months(sysdate, -5) and sysdate
+			  	group by to_char(updateDate, 'YYYY-MM-DD')
+			),
+			b AS (
+				select to_date(to_char(sysdate + 1 - level, 'YYYY-MM-DD'), 'YYYY-MM-DD') as three_m
+				from dual connect by level < sysdate - add_months(sysdate, -5) + 1
+				order by three_m
+			) 
+			
+			select 
+				to_date(to_char(three_m, 'MM'), 'MM') as month, 
+				nvl(sum(a.count), 0) as count, 
+				nvl(sum(a.sumPrice), 0) as sumPrice, 
+				trunc(nvl(avg(a.avgPrice), 0), 0) as avgPrice
+			from a
+			right outer join b on a.updateDate = b.three_m
+			group by to_date(to_char(b.three_m, 'MM'), 'MM')
+			order by to_date(to_char(b.three_m, 'MM'), 'MM')
+        ]]>
+	</select>
+	
+	<!-- 당월 판매량 별 카테고리 -->
+	<select id="pieChartList" resultType="com.example.ex02.dto.PieChartDto">
+		<![CDATA[
+			select 
+				to_date(to_char(three_m, 'YYYY-MM'), 'YYYY-MM') as month,
+				a.category as category,
+				nvl(sum(a.cnt), 0) as count, 
+				nvl(round(ratio_to_report(sum(a.cnt)) over() * 100, 1), 0) as percent
+			from (
+				select 
+				  	to_char(d.updateDate, 'YYYY-MM-DD') as updateDate,
+				  	i.category,
+				  	count(*) as cnt,
+				  	round(ratio_to_report(sum(i.cnt)) over() * 100, 1) as percent
+			  	from 
+				(	select 
+						ino, 
+						category AS category, 
+						count(*) AS cnt
+					from item
+					group by ino, category
+				) i, orderdetail d
+				where 1 = 1
+				and i.ino = d.ino
+				and d.state = 4
+				and d.updateDate between trunc(sysdate, 'MM') and sysdate
+			  	group by to_char(d.updateDate, 'YYYY-MM-DD'), i.category
+			) a
+			right outer join (
+				select to_date(to_char(sysdate + 1 - level, 'YYYY-MM-DD'), 'YYYY-MM-DD') as three_m
+				from dual connect by level < sysdate - trunc(sysdate, 'MM') + 1
+				order by three_m
+			) b 
+			on b.three_m = a.updateDate
+			where 1 = 1 
+			group by to_date(to_char(b.three_m, 'YYYY-MM'), 'YYYY-MM'), a.category
+			order by a.category
+        ]]>
+	</select>
+	
+	<resultMap id="dashBoardMap" type="map">
+		<result property="totalPrice" column="totalPrice"/>
+		<result property="monthPrice" column="monthPrice"/>
+		<result property="visitCount" column="visitCount"/>
+		<result property="regDateCount" column="regDateCount"/>
+	</resultMap>
+	
+	<select id="dashBoard" resultMap="dashBoardMap">
+		<![CDATA[
+			with 
+			a AS (
+				select nvl(sum(price * quantity), 0) as totalPrice
+				from orderdetail 
+				where 1 = 1
+				and state = 4
+			),
+			b AS (
+				select nvl(sum(price * quantity), 0) as monthPrice
+				from orderdetail 
+				where 1 = 1
+				and updateDate
+				between trunc(sysdate, 'MM') and sysdate
+				and state = 4
+			),
+			c AS (
+				select nvl(max(visitCount), 0) as visitCount
+				from visit 
+				where 1 = 1
+				and to_char(visitDate, 'YYYY-MM-DD') = to_char(sysdate, 'YYYY-MM-DD') 
+			),
+			d AS (
+				select count(*) as regDateCount
+				from member 
+				where 1 = 1 
+				and to_char(regDate, 'YYYY-MM-DD') = to_char(sysdate, 'YYYY-MM-DD')
+			)
+			
+			select totalPrice, monthPrice, visitCount, regDateCount
+			from a, b, c, d
+        ]]>
+	</select>
+	
+	<resultMap id="memberListMap" type="map">
+		<id property="id" column="id"/>
+		<result property="regdate" column="regdate"/>
+		<result property="point" column="point"/>
+		<result property="role" column="role"/>
+		<result property="boardCount" column="boardCount"/>
+		<result property="replyCount" column="replyCount"/>
+		<result property="orderCount" column="orderCount"/>
+	</resultMap>
+	
+	<select id="memberList" resultMap="memberListMap">
+		<![CDATA[
+			select 
+				m.id, 
+				to_char(m.regdate, 'YYYY-MM-DD') as regdate, 
+				m.point, 
+				m.role,
+				(select count(*) from board where id = m.id) as boardCount,
+				(select count(*) from reply where id = m.id) as replyCount,
+				(select count(*) from orderdetail where id = m.id) as orderCount
+			from member m
+			where 1 = 1
+			/* and not m.role = (upper('admin')) */
+        ]]>
+	</select>
+	
+	<!-- <resultMap id="orderListMap" type="map">
+		<id property="oino" column="oino"/>
+		<result property="orderId" column="orderId"/>
+		<result property="id" column="id"/>
+		<result property="ino" column="ino"/>
+		<result property="name" column="name"/>
+		<result property="price" column="price"/>
+		<result property="quantity" column="quantity"/>
+		<result property="state" column="state"/>
+		<result property="regDate" column="regDate" javaType="java.time.LocalDateTime"/>
+		<result property="updateDate" column="updateDate" javaType="java.time.LocalDateTime"/>
+	</resultMap> -->
+	
+	<select id="orderList" resultType="com.example.ex02.dto.OrderDto$OrderItemDto">
+		<![CDATA[
+			select 
+				d.oino as oino,
+				d.orderId as orderId,
+				d.id as id,
+				d.ino as ino,
+				i.name as name,
+				d.price as price,
+				d.quantity as quantity,
+				d.state as state,
+				d.regDate as regDate,
+				d.updateDate as updateDate
+			from item i, orderDetail d  
+			where 1 = 1
+			and i.ino = d.ino
+			and not d.state = 4
+        ]]>
+	</select>
+	
+</mapper>

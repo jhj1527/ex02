@@ -1,6 +1,7 @@
 package com.example.ex02.security;
 
 import org.springframework.beans.factory.annotation.Autowired;
+import org.springframework.security.core.userdetails.User;
 import org.springframework.security.core.userdetails.UserDetails;
 import org.springframework.security.core.userdetails.UserDetailsService;
 import org.springframework.security.core.userdetails.UsernameNotFoundException;
@@ -25,11 +26,11 @@ public class CustomUserDetailService implements UserDetailsService {
 			throw new UsernameNotFoundException(username);
 		}
 		
-		return new CustomUserDetail(dto);
-//		return User.builder()
-//				.username(dto.getId())
-//				.password(dto.getPassword())
-//				.roles(dto.getRole())
-//				.build();
+//		return new CustomUserDetail(dto);
+		return User.builder()
+				.username(dto.getId())
+				.password(dto.getPassword())
+				.roles(dto.getRole())
+				.build();
 	}
 }

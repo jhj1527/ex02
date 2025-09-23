@@ -20,8 +20,45 @@
     </select>
 	
 	<insert id="insert">
+		<choose>
+			<when test="role != null and role.equals('ADMIN')">
+				<![CDATA[
+					insert into member(id, password, role) 
+					values(#{id}, #{password}, #{role})
+		        ]]>
+			</when>
+			<otherwise>
+				<![CDATA[
+					insert into member(id, password) 
+					values(#{id}, #{password})
+		        ]]>
+			</otherwise>
+		</choose>
+	</insert>
+	
+	<select id="getVisit" resultType="int" >
+	    <![CDATA[
+            select count(*)
+            from visit
+            where 1 = 1
+            and to_char(visitDate, 'YYYY-MM-DD') = to_char(#{visitDate}, 'YYYY-MM-DD')
+        ]]>
+    </select>
+    
+    <insert id="insertVisit">
 		<![CDATA[
-			insert into member(id, password) values(#{id}, #{password})
+			insert into visit(visitCount, visitDate) 
+			values(1, sysdate)
+        ]]>
+	</insert>
+	
+	<insert id="updateVisit">
+		<![CDATA[
+			update visit set
+			visitCount = visitCount + 1,
+			visitDate = sysdate
+			where 1 = 1
+            and to_char(visitDate, 'YYYY-MM-DD') = to_char(#{visitDate}, 'YYYY-MM-DD')
         ]]>
 	</insert>
 	

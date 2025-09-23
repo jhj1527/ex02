@@ -12,10 +12,11 @@
 		<result property="address3" column="address3"/>
 		<result property="orderPrice" column="orderPrice"/>
 		<result property="charge" column="charge"/>
-		<result property="state" column="state"/>
+		<result property="state" column="o_state"/>
 		<result property="phone" column="phone"/>
 		<result property="email" column="email"/>
 		<result property="regDate" column="regDate"/>
+		<result property="cancelPrice" column="cancelPrice"/>
 	</resultMap>
     
     <resultMap id="orderDetailMap" type="com.example.ex02.dto.OrderDto" extends="orderMap">
@@ -25,25 +26,33 @@
 			<result property="ino" column="ino" />
 			<result property="id" column="id" />
 			<result property="name" column="name" />
-			<result property="amount" column="amount" />
+			<result property="quantity" column="quantity" />
 			<result property="price" column="price" />
 			<result property="discount" column="discount" />
+			<result property="state" column="d_state" />
+			<result property="regDate" column="regDate"/>
+			<result property="updateDate" column="updateDate"/>
+			<result property="imp_uid" column="imp_uid" />
 			<!-- property : dto 클래스 컬럼명과 동일 -->
 			<association property="attachDto" column="dto" javaType="com.example.ex02.dto.AttachDto" 
-			resultMap="attachResultMap" notNullColumn="fileName" />
+				resultMap="attachResultMap" notNullColumn="fileName">
+			</association>
 		</collection>
 	</resultMap>
 	
 	<resultMap id="attachResultMap" type="com.example.ex02.dto.AttachDto">
-		<!-- <result property="attachId" column="attachId" /> -->
+		<result property="attachId" column="attachId" />
 		<result property="ino" column="ino" />
 		<result property="fileName" column="filename" />
 		<result property="filePath" column="filepath" />
+		<result property="fileType" column="fileType" />
 	</resultMap>
 	
 	<select id="getList" resultMap="orderMap">
 		<![CDATA[
-	    	select *
+	    	select 
+	    	orderId, id, postCode, imp_uid, address1, address2, 
+	    	address3, phone, email, orderPrice, charge, state as o_state, regDate, cancelPrice
 			from orderitem 
 			where 1 = 1
 			and id = #{id}
@@ -52,15 +61,55 @@
 	</select>
     
     <select id="getDetailList" resultMap="orderDetailMap">
-    	<![CDATA[
-	    	select *  
+    	<![CDATA[	    	    	
+	    	select
+		    	o.orderId, 
+		    	o.id, 
+		    	o.postCode, 
+		    	o.imp_uid, 
+		    	o.address1, 
+		    	o.address2, 
+		    	o.address3, 
+		    	o.phone, 
+		    	o.email, 
+		    	o.orderPrice, 
+		    	o.charge, 
+		    	o.state as o_state, 
+		    	o.regDate,
+		    	o.cancelPrice,
+		    	d.oino, 
+		    	d.orderId, 
+		    	d.ino, 
+		    	d.id, 
+		    	d.quantity, 
+		    	d.price, 
+		    	d.state as d_state, 
+		    	d.imp_uid, 
+		    	d.oino,
+		    	d.regDate,
+		    	d.updateDate,
+		    	a.attachId, 
+		    	a.ino, 
+		    	a.filePath, 
+		    	a.fileName, 
+		    	a.fileType,
+		    	i.ino, 
+		    	i.category, 
+		    	i.name, 
+		    	i.price, 
+		    	i.amount, 
+		    	i.discount, 
+		    	i.content, 
+		    	i.regDate
 			from orderitem o
 			left outer join orderdetail d
 				on o.orderid = d.orderid
 			left outer join (
-			  	select ino, max(filename) as filename, filepath 
-			  	from attach
-				group by ino, filepath
+			  	select 
+			  	attachid, ino, filepath, filename, filetype
+				from attach
+				where 1 = 1
+				and lower(filename) like 'main%' OR upper(filename) like 'main%'
 			 	) a
 				on d.ino = a.ino
 			left outer join item i
@@ -71,12 +120,12 @@
 		]]>
     </select>
     
-    <select id="get" resultMap="orderMap">
+	<select id="getOrderItemByOino" resultType="com.example.ex02.dto.OrderDto$OrderItemDto">
 		<![CDATA[
 	    	select *
-			from orderitem 
+			from orderdetail
 			where 1 = 1
-			and orderId = #{orderId}
+			and oino = #{oino}
 		]]>
 	</select>
     
@@ -99,26 +148,20 @@
 		
 		<!-- selectkey는 한번만 호출 됨으로 foreach 안에 인덱스 값을 더해줘 채번 처리한다. -->
         <foreach collection="list" item="item" index="index" open="" separator=" " close="SELECT * FROM DUAL">
-			into orderdetail(oino, orderId, ino, id, price, amount) values
-			(#{oino} + #{index}, #{item.orderId}, #{item.ino}, #{item.id}, #{item.price}, #{item.amount})
+			into orderdetail(oino, orderId, ino, id, price, quantity, imp_uid) values
+			(#{oino} + #{index}, #{item.orderId}, #{item.ino}, #{item.id}, #{item.price}, #{item.quantity}, #{item.imp_uid})
 		</foreach>
 	</insert>
 	
-	<delete id="delete">
+	<update id="updateState">
 		<![CDATA[
-	    	delete from orderitem 
+	    	update orderdetail set
+			state = #{state},
+			updateDate = sysdate
 			where 1 = 1
-			and orderId = #{orderId}
+			and oino = #{oino}
 		]]>
-	</delete>
-	
-	<delete id="orderItemDelete">
-		<![CDATA[
-	    	delete from orderdetail 
-			where 1 = 1
-			and orderId = #{orderId}
-		]]>
-	</delete>
+	</update>
 	
 	<update id="update">
 		<![CDATA[
@@ -133,6 +176,22 @@
 			and id = #{id}
 			and orderId = #{orderId}
 		]]>
+	</update>
+	
+	<update id="updatePrice">
+		<![CDATA[
+	    	update orderitem
+		]]>
+		<trim prefix="SET" suffixOverrides=",">
+			<if test='charge > 0'>charge = charge - #{charge},</if>
+			
+			<![CDATA[
+		    	orderPrice = orderPrice - #{price},
+		    	cancelPrice = cancelPrice + #{price}
+				where 1 = 1
+				and orderId = #{orderId}
+			]]>
+		</trim>
 	</update>
  
 </mapper>

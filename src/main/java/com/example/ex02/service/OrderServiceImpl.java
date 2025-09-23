@@ -2,8 +2,11 @@ package com.example.ex02.service;
 
 import java.time.LocalDate;
 import java.time.format.DateTimeFormatter;
+import java.util.HashMap;
 import java.util.List;
+import java.util.Map;
 import java.util.Random;
+import java.util.stream.Collectors;
 import java.util.stream.IntStream;
 
 import org.springframework.beans.factory.annotation.Autowired;
@@ -40,11 +43,6 @@ public class OrderServiceImpl implements OrderService {
 		return orderMapper.getDetailList(orderId);
 	}
 
-	@Override
-	public OrderDto get(String orderId) {
-		return orderMapper.get(orderId);
-	}
-
 	@Transactional
 	@Override
 	public void insert(OrderDto dto) {
@@ -52,6 +50,7 @@ public class OrderServiceImpl implements OrderService {
 		
 		dto.getList().stream().forEach(order -> {
 			order.setOrderId(dto.getOrderId());
+			order.setImp_uid(dto.getImp_uid());
 			
 			CartDto cartDto = CartDto
 					.builder()
@@ -79,14 +78,33 @@ public class OrderServiceImpl implements OrderService {
 	
 	@Transactional
 	@Override
-	public void delete(String orderId) {
-		OrderDto dto = getDetailList(orderId);
+	public void cancel(Long oino) {
+		OrderItemDto orderItemDto = orderMapper.getOrderItemByOino(oino);
 		
-		if (dto != null) {
-			orderMapper.orderItemDelete(orderId);
+		int price = 0;
+		
+		OrderDto dto = getDetailList(orderItemDto.getOrderId());
+		price = orderItemDto.getPrice() * orderItemDto.getQuantity();
+		
+		List<OrderItemDto> list = dto.getList()
+				.stream()
+				.filter(item -> item.getState() != 4)
+				.collect(Collectors.toList());
+		
+		Map<String, Object> map = new HashMap<>();
+		map.put("orderId", orderItemDto.getOrderId());
+		map.put("price", price);
+		
+		if (list.size() == 1) {
+			map.put("charge", dto.getCharge());
+			
+		} else {
+			map.put("charge", 0);
 		}
 		
-		orderMapper.delete(orderId);
+		updateState(oino, 4);
+		
+		orderMapper.updatePrice(map);
 	}
 	
 	@Override
@@ -107,5 +125,11 @@ public class OrderServiceImpl implements OrderService {
         log.info("orderId : " + stringBuilder.toString());
 
         return stringBuilder.toString();
+	}
+	
+	@Transactional
+	@Override
+	public void updateState(Long oino, int state) {
+		orderMapper.updateState(oino, state);
 	}
 }

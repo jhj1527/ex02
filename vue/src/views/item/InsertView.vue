@@ -1,8 +1,8 @@
 <script setup>
   import { useStore } from '@/stores/store';
   import { storeToRefs } from 'pinia';
-  import { computed, reactive, ref, useTemplateRef } from 'vue'
-  import { useRouter } from 'vue-router';
+  import { computed, onMounted, reactive, ref, defineProps, defineEmits } from 'vue'
+  import { useRouter, onBeforeRouteLeave } from 'vue-router';
   import { commonApi } from '@/service/common';
   import { useRules } from 'vuetify/labs/rules'
 
@@ -10,19 +10,20 @@
   const store = useStore();
   const { member } = storeToRefs(store);
   const rules = useRules();
+  const emits = defineEmits(["insert"]);
 
   const input = reactive({
     name: "",
     price: 0,
     discount: 0,
+    amount : 0,
     category: "",
     content: "",
     attachList: [],
   });
 
   const selectList = [
-    { title: '상의', value: 'top' }, 
-    { title: '하의', value: 'bottom' }, 
+    { title: '의류', value: 'clothes' }, 
     { title: '모자', value: 'cap' },
     { title: '신발', value: 'shoes' },
   ];
@@ -31,27 +32,56 @@
   const multiFileResult = ref([]);
   const file = ref(null);
   const files = ref(null);
-  const subImageRefs = ref({});
-  const mainImageRefs = ref({});
   const mainSrc = ref([]);
   const subSrc = ref([]);
   let param = {};
+  const form = ref(null);
 
-  const setMainFileRef = async (el) => {
-    if (el) {
-      mainImageRefs.value = el;
-    }
-  };
+  onMounted(() => {
+    
+  });
 
-  const setMultiFileRef = async (el, idx) => {
-    if (el) {
-      subImageRefs.value[idx] = el;
+  onBeforeRouteLeave((to, from, next) => {
+    // 뒤로가기 시 실행될 로직
+    // 메인 이미지와 썸네일 이미지가 있다면 삭제
+    if (mainFileResult.value) {
+      deleteFile(mainFileResult.value);
     }
-  };
+
+    if (multiFileResult.value.length > 0) {
+      multiFileResult.value.forEach((item, i) => {
+        deleteFiles(item, i);
+      });
+    }
+
+    // 모든 이미지 URL 메모리에서 제거
+    mainSrc.value.forEach((item) => {
+      URL.revokeObjectURL(item);
+    });
+
+    next();
+  });
+
+  const fileRule = ref([
+    value => {
+      if (!value) {
+        return true;
+
+      } else if (!!value && input.category !== "") { 
+        return true;
+
+      } else if (!!value && input.category === "") { 
+        return 'select category first';
+      }  
+    },
+    // value => {
+    //     if (!!value && input.category !== "") return true
+    //     return '제fsdgsfgsfgsf.'
+    // }
+  ]);
 
   const getImage = async (item, i) => {
     try {
-      debugger;
       param = {};
       param.filePath = item.filePath;
       param.fileName = item.fileName;
@@ -60,13 +90,12 @@
       console.log(res.data);
       
       const url = URL.createObjectURL(res.data); // url 생성
-      if (i !== undefined) {
-        subSrc.value.push(url);
-        subImageRefs.value[i].src = url;
-
-      } else {
+      if (i < 0) {
         mainSrc.value[0] = url;
-        mainImageRefs.value[0].src = url;
+        
+      } else {
+        subSrc.value.push(url);
+        // subSrc.value[i] = url;
       }
       
     } catch (e) { 
@@ -77,10 +106,18 @@
   const mainFileChange = async(e) => {
     if (mainFileResult.value) {
       await commonApi("/api/file/delete", "POST", mainFileResult.value);
-      mainFileResult.value = "";
     }
+    
+    mainFileResult.value = "";
+    mainSrc.value = [];
 
     if (e.target.files.length === 0) {
+      return;
+    }
+
+    if (input.category === "") {
+      alert("select category first");
+      // file.value = null;
       return;
     }
 
@@ -93,7 +130,7 @@
 
       mainFileResult.value = res.data;
 
-      getImage(mainFileResult.value);
+      getImage(mainFileResult.value, -1);
 
     } catch (e) {
       console.log("error : ", e);
@@ -101,7 +138,14 @@
   };
 
   const multiFileChange = async(e) => {
-    multiFileResult.value = "";
+    if (multiFileResult.value.length > 0) {
+      multiFileResult.value.forEach(async(item, i) => {
+        await commonApi("/api/file/delete", "POST", item);
+      });
+    }
+    
+    multiFileResult.value = [];
+    subSrc.value = [];
     
     if (files.value.length === 0) {
       return;
@@ -139,10 +183,8 @@
     try {
       const res = await commonApi("/api/file/delete", "POST", item);
 
-      // 해당 파일 객체 삭제
       mainFileResult.value = "";
-      mainSrc.value[0] = null;
-      mainImageRefs.value[0] = null;
+      mainSrc.value = null;
       file.value = null;
   
     } catch (e) {
@@ -160,7 +202,6 @@
       );
 
       subSrc.value.splice(i, 1);
-      subImageRefs.value[i] = null;
       
       if (multiFileResult.value.length === 0) {
         files.value = null;
@@ -171,157 +212,174 @@
     }
   }
 
-  const submitForm = async() => {
+  const submitForm = () => {
     try {
-      if (mainFileResult.value) {
-        input.attachList.push(mainFileResult.value);
-      }
+      form.value?.validate().then(async (res) => {
+        // console.log(res);
+        
+        if (!res.valid) {
+          alert(res.errors[0].errorMessages[0]);
+          return;
+        }
 
-      if (multiFileResult.value.length > 0) {
-        input.attachList = input.attachList.concat(multiFileResult.value);
-      }
+        if (mainFileResult.value) {
+          input.attachList.push(mainFileResult.value);
+        }
 
-      // console.log(input.attachList);
+        if (multiFileResult.value.length > 0) {
+          input.attachList = input.attachList.concat(multiFileResult.value);
+        }
 
-      const res = await commonApi("/api/item/insert", "POST", input);
+        // console.log(input.attachList);
 
-      if (res.status === 200 || res.status === 201) {
-        alert("isnert");
+        const res1 = await commonApi("/api/item/insert", "POST", input);
 
-        input.name = "";
-        input.price = 0;
-        input.discount = 0;
-        input.category = "";
-        input.content = "";
-        input.attachList = [];
-        mainFileResult.value = "";  
-        multiFileResult.value = [];
-        file.value = null;
-        files.value = null; 
-      } 
-
-  
+        if (res1.status === 200 || res1.status === 201) {
+          input.name = "";
+          input.price = 0;
+          input.discount = 0;
+          input.amount = 0;
+          input.category = "";
+          input.content = "";
+          input.attachList = [];
+          mainFileResult.value = "";  
+          multiFileResult.value = [];
+          file.value = null;
+          files.value = null;
+          
+          emits("insert");
+        }
+      }).catch((e) => {
+        console.log(e);
+      }); 
     } catch (e) {
-      console.log("error : ", e);
+      console.log(e);
     }
   }
 
 </script>
 
 <template>
-  <v-container>
-    <v-form @submit.prevent="submitForm">
-      <v-card class="pa-4">
-        <v-card-title>상품 등록</v-card-title>
-        <v-card-text>
-          <v-text-field 
-            clearable
-            v-model="input.name"
-            label="상품명"
-            class="mb-2"
-            prepend-icon="mdi-pencil"
-            required
-            :rules="[
-              value => !!value || 'required field',
-            ]"
-          ></v-text-field>
+  <v-form ref="form" @submit.prevent="submitForm">
+    <v-card class="pa-4">
+      <v-card-title>상품 등록</v-card-title>
+      <v-card-text>
+        <v-text-field 
+          clearable
+          v-model="input.name"
+          label="상품명"
+          class="mb-2"
+          prepend-icon="mdi-pencil"
+          required
+          :rules="[
+            // rules.required(),
+            value => !!value || 'name required field',
+          ]"
+        ></v-text-field>
 
-          <v-number-input
-            v-model="input.price"
-            control-variant="hidden"
-            prepend-icon="mdi-pencil"
-            label="가격"
-            class="mb-2"
-            :min="0"
-            :rules="[
-              value => !!value || 'required field',
-              value => value >= 100 && value <= 1000 || 'must be between 100 and 1000'
-            ]"
-          ></v-number-input>
+        <v-number-input
+          v-model="input.price"
+          control-variant="hidden"
+          prepend-icon="mdi-pencil"
+          label="가격"
+          class="mb-2"
+          :min="0"
+          :rules="[
+            value => !!value || 'price required field',
+            value => value >= 100 && value <= 1000 || 'price must be between 100 and 1000'
+          ]"
+        ></v-number-input>
 
-          <v-number-input 
-            v-model="input.discount"
-            control-variant="hidden"
-            prepend-icon="mdi-pencil"
-            label="할인율"
-            class="mb-2"
-            required 
-            :max="100"
-            :min="0"
-          ></v-number-input>
+        <v-number-input 
+          v-model="input.discount"
+          control-variant="hidden"
+          prepend-icon="mdi-pencil"
+          label="할인율"
+          class="mb-2"
+          required 
+          :max="100"
+          :min="0"
+        ></v-number-input>
 
-          <v-select
-            v-model="input.category"
-            prepend-icon="mdi-form-select"
-            label="카테고리"
-            :items="selectList"
-            item-title="title"
-            item-value="value"
-            required
-          ></v-select>
+        <v-number-input 
+          v-model="input.amount"
+          control-variant="hidden"
+          prepend-icon="mdi-pencil"
+          label="수량"
+          class="mb-2"
+          required 
+        ></v-number-input>
 
-          <v-textarea
-            v-model="input.content"
-            prepend-icon="mdi-pencil"
-            label="상품 설명"
-            required
-          ></v-textarea>
+        <v-select
+          v-model="input.category"
+          prepend-icon="mdi-form-select"
+          label="카테고리"
+          :items="selectList"
+          item-title="title"
+          item-value="value"
+          required
+        ></v-select>
 
-          <v-file-input
-            v-model="file"
-            @change="mainFileChange"
-            label="메인 이미지"
-            accept="image/*"
-          ></v-file-input>
+        <v-textarea
+          v-model="input.content"
+          prepend-icon="mdi-pencil"
+          label="상품 설명"
+          required
+        ></v-textarea>
 
-          <v-list v-if="mainFileResult">
-            <v-list-item>
-              <!-- <v-list-item-title>{{ mainFileResult.fileName }}</v-list-item-title> -->
-              <v-img 
-              :src="mainSrc[0]"
-              :ref="el => setMainFileRef(el)" 
+        <v-file-input
+          v-model="file"
+          @change="mainFileChange"
+          label="메인 이미지"
+          accept="image/*"
+          :rules="fileRule"
+        ></v-file-input>
+
+        <v-list v-if="mainFileResult">
+          <v-list-item>
+            <!-- <v-list-item-title>{{ mainFileResult.fileName }}</v-list-item-title> -->
+            <v-img 
+            :src="mainSrc[0]"
+            :height="100" 
+            :width="100"
+            cover
+            ></v-img>
+            <template v-slot:append>
+              <v-btn icon="mdi-delete" variant="text" @click="deleteFile(mainFileResult)"></v-btn>
+            </template>
+          </v-list-item>
+        </v-list>
+
+        <v-file-input
+          v-model="files"
+          @change="multiFileChange"  
+          label="썸네일"
+          accept="image/*"
+          multiple
+        ></v-file-input>
+
+        <v-list v-if="multiFileResult">
+          <v-list-item v-for="(item, i) in multiFileResult" :key="item.attachId">
+            <!-- <v-list-item-title>{{ item.fileName }}</v-list-item-title> -->
+            <v-img 
+              :src="subSrc[i]"
               :height="100" 
               :width="100"
-              cover
-              ></v-img>
-              <template v-slot:append>
-                <v-btn icon="mdi-delete" variant="text" @click="deleteFile(mainFileResult)"></v-btn>
-              </template>
-            </v-list-item>
-          </v-list>
+              class="ml-2"
+            ></v-img>
+            <template v-slot:append>
+              <v-btn icon="mdi-delete" variant="text" @click="deleteFiles(item, i)"></v-btn>
+            </template>
+          </v-list-item>
+        </v-list>
+      </v-card-text>
 
-          <v-file-input
-            v-model="files"
-            @change="multiFileChange"  
-            label="썸네일"
-            accept="image/*"
-            multiple
-          ></v-file-input>
-
-          <v-list v-if="multiFileResult">
-            <v-list-item v-for="(item, i) in multiFileResult" :key="item.attachId">
-              <!-- <v-list-item-title>{{ item.fileName }}</v-list-item-title> -->
-              <v-img 
-                :src="subSrc[i]"
-                :ref="el => setMultiFileRef(el, i)" 
-                :height="100" 
-                :width="100"
-                class="ml-2"
-              ></v-img>
-              <template v-slot:append>
-                <v-btn icon="mdi-delete" variant="text" @click="deleteFiles(item, i)"></v-btn>
-              </template>
-            </v-list-item>
-          </v-list>
-        </v-card-text>
-
-        <v-card-actions>
-          <v-spacer></v-spacer>
-          <v-btn color="primary" type="submit">등록</v-btn>
-        </v-card-actions>
-      </v-card>
-    </v-form>
-  </v-container>
+      <v-card-actions>
+        <v-spacer></v-spacer>
+        <v-btn color="primary" type="submit">등록</v-btn>
+      </v-card-actions>
+    </v-card>
+  </v-form>
 </template>
 
 <style scoped>

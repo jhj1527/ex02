@@ -7,41 +7,70 @@
 		<![CDATA[
             select 
             /*+ index_asc(item SYS_C007008) */
-            ino, category, name, price, amount, discount, content
+            ino, category, name, price, amount, discount, content, regDate
 			from (
 				select 
 					/*+ index_asc(item SYS_C007008) */
-					rownum rn, ino, category, name, price, amount, discount, content
+					rownum rn, ino, category, name, price, amount, discount, content, regDate
 					from item
 					where 1 = 1
 					and ino > 0
         ]]>
-        
-			        <if test='!type.equals("lowPrice") and !type.equals("highPrice") and !type.equals("newItem")'>
-				        <include refid="search"></include>
-			        </if>
+			        
+			        <include refid="search"></include>
 		        
 		        	<![CDATA[
 						and rownum <= #{pageNum} * #{amount}
 		        	]]>
 		        	
-		        	<if test='type.equals("lowPrice")'>
-		        		order by price
-		        	</if>
 		        	
-		        	<if test='type.equals("highPrice")'>
-		        		order by price desc
-		        	</if>
-		        	
-		        	<if test='type.equals("newItem")'>
-		        		order by regdate desc
-		        	</if>
 		<![CDATA[
 				 )
 			where 1 = 1
 			and rn > (#{pageNum} - 1) * #{amount}
 		]]>
 	</select>
+	
+	<resultMap id="itemMap" type="com.example.ex02.dto.ItemDto" >
+		<id property="ino" column="ino"/>
+		<result property="name" column="name" />
+		<result property="category" column="category" />
+		<result property="price" column="price" />
+		<result property="amount" column="amount" />
+		<result property="discount" column="discount" />
+		<result property="content" column="content" />
+		<result property="regDate" column="regDate" />
+		<collection property="attachList" column="attachList" ofType="com.example.ex02.dto.AttachDto" notNullColumn="attachId" >
+			<id property="attachId" column="attachId" />
+			<result property="ino" column="ino" />
+			<result property="filePath" column="filePath" />
+			<result property="fileName" column="fileName" />
+			<result property="fileType" column="fileType" />
+		</collection>
+	</resultMap>
+	
+	<select id="list" resultMap="itemMap">
+	    <![CDATA[
+            select 
+            	i.ino, 
+            	i.category, 
+            	i.name, 
+            	i.price, 
+            	i.amount, 
+            	i.discount, 
+            	i.content,
+            	i.regDate,
+            	a.attachId,
+            	a.ino,
+            	a.filePath,
+            	a.fileName,
+            	a.fileType
+            from item i
+            left outer join attach a
+				on i.ino = a.ino
+            where 1 = 1
+        ]]>
+    </select>
 	
 	<select id="get" resultType="com.example.ex02.dto.ItemDto">
 	    <![CDATA[
@@ -60,9 +89,7 @@
             and ino > 0
         ]]>
         
-        <if test='!type.equals("lowPrice") and !type.equals("highPrice") and !type.equals("newItem")'>
-	        <include refid="search"></include>
-        </if>
+        <include refid="search"></include>
     </select>
     <select id="getAmountCount" resultType="int" >
 	    <![CDATA[
@@ -117,20 +144,15 @@
     
     
     <sql id="search">
-    	<choose>    		
-    		<when test='(keyword == null or keyword.equals("")) and (type == null or type.equals(""))'>
+    	<choose>
+    		<when test='type.equals("all")'>
     			
     		</when>
-    		<when test='(keyword == null or keyword.equals("")) and (type != null or !type.equals(""))'>
-    			and category = #{type}
-    		</when>
-    		<when test='type == null or type.equals("")'>
-    			and lower(name) like lower('%'||#{keyword}||'%')
-    		</when>
+
     		<otherwise>
     			and category = #{type}
-    			and lower(name) like lower('%'||#{keyword}||'%')
-    		</otherwise>
+    		</otherwise>    		
+
     	</choose>
     </sql>
  

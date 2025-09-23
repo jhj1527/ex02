@@ -15,8 +15,9 @@ public class CartDto {
 	private Long cno;
 	private String id;
 	private Long ino;
+	private int amount;
 	private String name;
 	private int price;
-	private int amount;
+	private int quantity;
 	private List<AttachDto> attachList;
 }

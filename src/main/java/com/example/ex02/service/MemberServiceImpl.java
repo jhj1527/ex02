@@ -1,5 +1,7 @@
 package com.example.ex02.service;
 
+import java.time.LocalDate;
+
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.security.crypto.password.PasswordEncoder;
 import org.springframework.stereotype.Service;
@@ -15,14 +17,11 @@ import lombok.extern.slf4j.Slf4j;
 @Service
 @Slf4j
 public class MemberServiceImpl implements MemberService{
-
 	private final MemberMapper memberMapper;
-	private final PasswordEncoder passwordEncoder;
-
+	
     @Autowired
-    public MemberServiceImpl(MemberMapper memberMapper, PasswordEncoder passwordEncoder) {
+    public MemberServiceImpl(MemberMapper memberMapper) {
     	this.memberMapper = memberMapper;
-    	this.passwordEncoder = passwordEncoder;
     }
     
 	@Override
@@ -49,9 +48,22 @@ public class MemberServiceImpl implements MemberService{
 			dto.setRole("ADMIN");
 		}
 		
-		dto.setPassword(passwordEncoder.encode(dto.getPassword()));
-		
 		return memberMapper.insert(dto);
+	}
+
+	@Override
+	public int getVisit(LocalDate visitDate) {
+		return memberMapper.getVisit(visitDate);
+	}
+
+	@Override
+	public void insertVisit(LocalDate visitDate) {
+		memberMapper.insertVisit(visitDate);
+	}
+
+	@Override
+	public void updateVisit(LocalDate visitDate) {
+		memberMapper.updateVisit(visitDate);
 	}
 
 }

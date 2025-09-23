@@ -1,5 +1,6 @@
 package com.example.ex02.dto;
 
+import java.time.LocalDate;
 import java.util.List;
 
 import lombok.AllArgsConstructor;
@@ -19,5 +20,6 @@ public class ItemDto {
     private Long amount;
     private Long discount;
     private String content;
+    private LocalDate regDate;
     private List<AttachDto> attachList;
 }

@@ -2,172 +2,206 @@
   import { commonApi } from '@/service/common';
   import { useStore } from '@/stores/store';
   import dayjs from 'dayjs';
-  
   import { storeToRefs } from 'pinia';
   import { computed, onMounted, reactive, ref } from 'vue';
-  import { useRoute, useRouter } from 'vue-router';
+  import { useRouter } from 'vue-router';
+
   const router = useRouter();
   const store = useStore();
-  const { member, cart } = storeToRefs(store);
-  const day = ref("");
-
-  const result = ref({});
+  const { member } = storeToRefs(store);
+  const result = ref([]);
   let param = {};
+  const loading = ref(false)
+  const dateRange = ref([])
+  const orders = ref([])
+
+  const headers = [
+    { title: '주문번호', align: 'start', key: 'orderId' },
+    { title: '주문일자', key: 'orderDate' },
+    { title: '주문자명', key: 'id' },
+    { title: '주문금액', key: 'totalPrice' },
+    { title: '진행상태', key: 'status' },
+    { title: '접수', key: 'actions' }
+  ];
 
   onMounted(() => {
-    orderList();
+    orderList()
   });
 
   const dayFormat = computed(() => 
-    (value) => dayjs(value).format("YYYY.MM.DD hh:mm:ss")
+    (value) => dayjs(value).format("YYYY-MM-DD hh:mm:ss")
   );
 
   const priceFormat = computed(() => 
-    (value) => value > 0 ? value.toLocaleString() : 0
+    (value) => value > 0 ? value.toString().replace(/\B(?=(\d{3})+(?!\d))/g, ',') : 0
   );
 
   const orderList = async () => {
-    param = {};
-    param.id = member.value.id;
-    const res = await commonApi("/api/order/list", "get", param);
-    result.value = res.data.map(item => {
-      if (item.state === 1) {
-        item.state = "배송준비";
+    try {
+      loading.value = true;
+      param = {};
+      param.id = member.value.id;
+      const res = await commonApi("/api/order/list", "get", param);
+      result.value = res?.data.map(item => {
+        if (item.state === 1) {
+          item.state = "배송준비";
 
-      } else if (item.state === 2) {
-        item.state = "배송중";
+        } else if (item.state === 2) {
+          item.state = "배송중";
 
-      } else if (item.state === 3) {
-        item.state = "배송완료";
-      }
-      return item;
-    });
-    console.log(result.value);
+        } else if (item.state === 3) {
+          item.state = "배송완료";
+
+        } else if (item.state === 4) {
+          item.state = "주문취소";
+        }
+        return item;
+      });
+      console.log(result.value);
+    } catch (e) {
+      console.log(e);
+
+    } finally {
+      loading.value = false
+    }  
   };
 
   const cancel = async (item) => {
     try {
-      param = {};
-      param.imp_uid = item.imp_uid;
-      param.orderPrice = item.orderPrice;
-      param.charge = item.charge;
-      const res = await commonApi("/api/payment/cancel", "post", param);
+      // param = {};
+      // param.orderId = item.orderId;
+      // const res = await commonApi("/api/order/cancel", "delete", param);
+      
+      // if (res.status === 200) {
+      //   alert("cancel");
+      //   result.value.map(item => item.state = '주문취소');
+      //   console.log(result.value);
+      //   // result.value = result.value.filter(i => i.orderId !== item.orderId);
+      // }
+
+      // param = {};
+      // param.imp_uid = item.imp_uid;
+      // param.orderPrice = item.orderPrice;
+      // param.charge = item.charge;
+      // const res = await commonApi("/api/payment/cancel", "post", param);
   
-      console.log(res);
+      // console.log(res);
   
-      if (res.data.response !== null) {
-        param = {};
-        param.orderId = item.orderId;
-        const res = await commonApi("/api/order/delete", "delete", param);
+      // if (res.data.response !== null) {
+      //   param = {};
+      //   param.orderId = item.orderId;
+      //   const res = await commonApi("/api/order/delete", "delete", param);
         
-        if (res.status === 200) {
-          alert("cancel");
-          result.value = result.value.filter(i => i.orderId !== item.orderId);
-        }
+      //   if (res.status === 200) {
+      //     alert("cancel");
+      //     result.value = result.value.map(item => item.state = '주문취소');
+      //     // result.value = result.value.filter(i => i.orderId !== item.orderId);
+      //   }
   
-      } else {
-        alert("이미 취소된 내역");
-      }
+      // } else {
+      //   alert("이미 취소된 내역");
+      // }
       
     } catch (e) {
       console.error(e);
     }
   };
+
+  const insertReview = async (item) => {
+    try {
+      
+    } catch (e) {
+      console.error(e);
+    }
+  };
+
+  const getStatusColor = (status) => {
+    const statusColors = {
+      '배송준비': 'secondary',
+      '배송중': 'primary',
+      '배송완료': 'success',
+      '주문취소': 'error'
+    }
+    return statusColors[status] || 'grey'
+  }
+
+  const viewOrderDetail = (item) => {
+    router.push(`/order/${item.orderId}`)
+  }
+
 </script>
 
 <template>
-  <div class="bg-light min-vh-100 py-4">
-    <div class="container">
-      <!-- Header -->
-      <div class="d-flex align-items-center mb-4">
-        <h1 class="fw-bold mb-0 me-2">주문내역</h1>
-        <span class="fs-3 text-secondary"></span>
-      </div>
+  <v-container>
+    <!-- Header -->
+    <v-row class="mb-4">
+      <v-col>
+        <h1 class="text-h4 font-weight-bold">주문내역</h1>
+      </v-col>
+    </v-row>
 
-      <!-- Card -->
-      <div class="bg-white rounded shadow-sm p-4">
-        <!-- Toolbar -->
-        <div class="d-flex align-items-center mb-3 flex-wrap gap-2">
-          <div class="dropdown me-2">
-            <button class="btn btn-outline-secondary dropdown-toggle" type="button" data-bs-toggle="dropdown">
-              <i class="bi bi-info-circle me-1"></i> All items <span class="text-secondary"> (138)</span>
-            </button>
-            <ul class="dropdown-menu">
-              <li><a class="dropdown-item" href="#">All items</a></li>
-              <li><a class="dropdown-item" href="#">Paid</a></li>
-              <li><a class="dropdown-item" href="#">Unfulfilled</a></li>
-            </ul>
-          </div>
-          <div class="dropdown me-2">
-            <button class="btn btn-link text-decoration-none dropdown-toggle" type="button" data-bs-toggle="dropdown">
-              Manage View
-            </button>
-            <ul class="dropdown-menu">
-              <li><a class="dropdown-item" href="#">Default</a></li>
-              <li><a class="dropdown-item" href="#">Custom</a></li>
-            </ul>
-          </div>
-          <div class="ms-auto d-flex align-items-center gap-2">
-            <button class="btn btn-outline-primary">
-              <i class="bi bi-funnel"></i> Filter
-            </button>
-            <button class="btn btn-outline-secondary">
-              <i class="bi bi-sliders"></i>
-            </button>
-            <div class="input-group ms-2" style="width: 200px;">
-              <span class="input-group-text bg-white border-end-0"><i class="bi bi-search"></i></span>
-              <input type="text" class="form-control border-start-0" placeholder="Search...">
-            </div>
-          </div>
-        </div>
-
+    <!-- Card -->
+    <v-card>
+      <v-card-text>
         <!-- Table -->
-        <div class="table-responsive">
-          <table class="table align-middle">
-            <thead class="table-light">
-              <tr>
-                <th scope="col" class="text-primary">OrderId</th>
-                <th scope="col">OrderDate</th>
-                <th scope="col">Customer</th>
-                <th scope="col">state</th>
-                <th scope="col">Total</th>
-                <th scope="col"></th>
-              </tr>
-            </thead>
-            <tbody>
-              <tr v-for="item in result" :key="item.orderId">
-                <td>
-                  <RouterLink :to="`/order/detail/${item.orderId}`" style="color: black; text-decoration: none;" >{{ item.orderId }}</RouterLink>
-                </td>
-                <td> {{ dayFormat(item.regDate) }}</td>
-                <td>{{ item.id }}</td>
-                <td>
-                  <span class="badge bg-success bg-opacity-25 text-success fw-bold px-3 py-2" style="font-size: 1em;">
-                    {{ item.state }}
-                  </span>
-                </td>
-                <td class="fw-bold">{{ priceFormat(item.orderPrice + item.charge) }}</td>
-                <td>
-                    <button @click="cancel(item)" class="btn btn-outline-primary fw-bold px-3 py-2" style="font-size: 1em;">주문취소</button>
-                </td>
-              </tr>
-            </tbody>
-          </table>
-        </div>
-      </div>
-    </div>
-  </div>
+        <v-data-table
+          :headers="headers"
+          :items="result"
+          :loading="loading"
+        >
+          <template v-slot:item.orderId="{ item }">
+            <v-btn
+              variant="text"
+              :to="`/order/detail/${item.orderId}`"
+            >
+              {{ item.orderId }}
+            </v-btn>
+          </template>
+
+          <template v-slot:item.orderDate="{ item }">
+            {{ dayFormat(item.regDate) }}
+          </template>
+
+          <template v-slot:item.id="{ item }">
+            {{ item.id }}
+          </template>
+
+          <template v-slot:item.status="{ item }">
+            <v-chip
+              :color="getStatusColor(item.state)"
+              variant="outlined"
+              class="font-weight-bold"
+            >
+              {{ item.state }}
+            </v-chip>
+          </template>
+
+          <template v-slot:item.totalPrice="{ item }">
+            {{ priceFormat(item.orderPrice + item.charge) }}
+          </template>
+
+          <template v-slot:item.actions="{ item }">
+            <v-btn
+              v-if="item.state === '배송준비' || item.state === '배송중'"
+              color="error"
+              variant="outlined"
+              @click="cancel(item)"
+              text="주문취소"
+            ></v-btn>
+            <v-btn
+              v-else-if="item.state === '배송완료'"
+              color="warning"
+              variant="outlined"
+              @click="insertReview(item)"
+              text="리뷰작성"
+            ></v-btn>
+          </template>
+        </v-data-table>
+      </v-card-text>
+    </v-card>
+  </v-container>
 </template>
-  
+
 <style scoped>
-.table th, .table td {
-  vertical-align: middle;
-}
-.table thead th {
-  background-color: #f6f8fa;
-  font-weight: 500;
-}
-.bg-light {
-  background-color: #f6f8fa !important;
-}
+
 </style>
